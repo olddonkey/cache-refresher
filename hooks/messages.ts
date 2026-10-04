@@ -12,6 +12,16 @@ import { ptBR } from './locales/pt-BR'
 import { it } from './locales/it'
 import { ru } from './locales/ru'
 import { uk } from './locales/uk'
+import { nl } from './locales/nl'
+import { sv } from './locales/sv'
+import { da } from './locales/da'
+import { nb } from './locales/nb'
+import { fi } from './locales/fi'
+import { tr } from './locales/tr'
+import { id } from './locales/id'
+import { vi } from './locales/vi'
+import { th } from './locales/th'
+import { fil } from './locales/fil'
 
 export type { Messages } from './locales/en'
 
@@ -165,6 +175,114 @@ export const LOCALES = [
     pattern: /^(?:uk(?:[-_]|$)|ukrainian\b|українська)/,
     script: 'cyrillic',
     marks: /[іїєґ]/iu,
+  },
+  {
+    code: 'nl',
+    messages: nl,
+    pattern: /^(?:nl(?:[-_]|$)|dutch\b|nederlands\b)/,
+    script: 'latin',
+    words: [
+      'het', 'een', 'niet', 'voor', 'van', 'dat', 'dit', 'deze', 'hij', 'zij', 'wij',
+      'jij', 'je', 'jouw', 'ons', 'onze', 'hun', 'als', 'maar', 'ook', 'nog',
+      'omdat', 'zonder', 'wanneer', 'bij', 'zich', 'moet', 'heeft',
+    ],
+  },
+  {
+    code: 'sv',
+    messages: sv,
+    pattern: /^(?:sv(?:[-_]|$)|swedish\b|svenska\b)/,
+    script: 'latin',
+    words: [
+      'inte', 'och', 'jag', 'är', 'av', 'från', 'vad', 'hur', 'också', 'bara', 'mycket',
+      'detta', 'dessa', 'vilket', 'vilka', 'någon', 'något', 'några', 'eftersom',
+      'innan', 'även', 'utan', 'än', 'här', 'där', 'alltså', 'redan',
+    ],
+  },
+  {
+    code: 'da',
+    messages: da,
+    pattern: /^(?:da(?:[-_]|$)|danish\b|dansk\b)/,
+    script: 'latin',
+    // Ikke, og, jeg and er are shared with Bokmål; prefer contrasting forms.
+    words: [
+      'af', 'hvad', 'meget', 'nogen', 'noget', 'nogle', 'inden', 'selvom', 'uden',
+      'jer', 'jeres', 'hendes', 'mig', 'dig', 'sig', 'hinanden', 'hvornår', 'sådan',
+      'sådanne', 'måske', 'især', 'op', 'også', 'kun', 'hvilket',
+    ],
+  },
+  {
+    code: 'nb',
+    messages: nb,
+    pattern: /^(?:(?:nb|no|nn)(?:[-_]|$)|norwegian\b|norsk\b)/,
+    script: 'latin',
+    words: [
+      'av', 'hva', 'bare', 'mye', 'noen', 'noe', 'dere', 'deres', 'hennes', 'uten',
+      'etter', 'enn', 'dersom', 'slik', 'seg', 'meg', 'deg', 'oss', 'vårt', 'våre',
+      'ditt', 'mitt', 'vært', 'ble', 'blitt',
+    ],
+  },
+  {
+    code: 'fi',
+    messages: fi,
+    pattern: /^(?:fi(?:[-_]|$)|finnish\b|suomi\b)/,
+    script: 'latin',
+    words: [
+      'ja', 'ei', 'että', 'kun', 'jos', 'niin', 'mutta', 'myös', 'vain', 'vielä', 'jo',
+      'nyt', 'sitten', 'ennen', 'jälkeen', 'ilman', 'kanssa', 'sinä', 'sinun', 'minä',
+      'nämä', 'tämä', 'ovat', 'oli', 'ole', 'joka', 'jotka',
+    ],
+  },
+  {
+    code: 'tr',
+    messages: tr,
+    pattern: /^(?:tr(?:[-_]|$)|turkish\b|türkçe)/,
+    script: 'latin',
+    words: [
+      've', 'bir', 'bu', 'şu', 'ben', 'biz', 'siz', 'onlar', 'için', 'ile', 'ama',
+      'fakat', 'çünkü', 'eğer', 'değil', 'daha', 'çok', 'gibi', 'kadar', 'sonra',
+      'önce', 'henüz', 'artık', 'ise', 'ancak',
+    ],
+  },
+  {
+    code: 'id',
+    messages: id,
+    pattern: /^(?:(?:id|in)(?:[-_]|$)|indonesian\b|bahasa indonesia\b)/,
+    script: 'latin',
+    words: [
+      'yang', 'dan', 'tidak', 'ini', 'itu', 'dengan', 'untuk', 'dari', 'pada', 'akan',
+      'sudah', 'belum', 'jika', 'tetapi', 'karena', 'agar', 'anda', 'saya', 'kami',
+      'kita', 'mereka', 'juga', 'hanya', 'masih', 'tanpa',
+    ],
+  },
+  {
+    code: 'vi',
+    messages: vi,
+    pattern: /^(?:vi(?:[-_]|$)|vietnamese\b|tiếng việt)/,
+    script: 'latin',
+    // Leave shared plain accents to words: French and Portuguese use them too.
+    marks: /[ăâđêôơưảạằắẳẵặầấẩẫậẻẽẹềếểễệỉĩịỏọồốổỗộờớởỡợủũụừứửữựỳỷỹỵ]/iu,
+    words: [
+      'và', 'của', 'là', 'không', 'được', 'đã', 'đang', 'sẽ', 'có', 'này', 'đó',
+      'những', 'các', 'một', 'cho', 'với', 'trong', 'khi', 'nếu', 'nhưng', 'vì',
+      'để', 'bạn', 'chúng', 'chỉ',
+    ],
+  },
+  {
+    code: 'th',
+    messages: th,
+    pattern: /^(?:th(?:[-_]|$)|thai\b|ไทย)/,
+    script: 'thai',
+  },
+  {
+    code: 'fil',
+    messages: fil,
+    pattern: /^(?:(?:fil|tl)(?:[-_]|$)|filipino\b|tagalog\b)/,
+    script: 'latin',
+    words: [
+      'ang', 'ng', 'mga', 'ito', 'iyon', 'hindi', 'ay', 'sa', 'kung', 'kapag', 'dahil',
+      'upang', 'habang', 'naman', 'rin', 'din', 'lang', 'lamang', 'mo', 'mong',
+      'iyong', 'natin', 'namin', 'ninyo', 'sila', 'siya',
+    ],
   },
 ] as const satisfies readonly Locale[]
 

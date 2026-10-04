@@ -307,6 +307,46 @@ const DETECTION_SAMPLES = {
     'Зміни готові, але ще потрібно перевірити обробку помилок під час запиту. Попередні налаштування зберігаються, тому користувач зможе продовжити роботу без повторного вибору параметрів після отримання відповіді.',
     'У register.tsx додано перевірку відповіді перед збереженням налаштувань. Якщо запит завершиться помилкою, попередні значення залишаться на місці. Тепер можна запустити тести й перевірити відображення панелі після перезапуску.',
   ],
+  nl: [
+    'Ik heb de wijzigingen gecontroleerd en een test toegevoegd voor het geval dat een verzoek mislukt. Je instellingen blijven behouden, zodat je niet opnieuw hoeft te kiezen wanneer je verdergaat.',
+    'In register.tsx wordt het antwoord nu gecontroleerd voordat we een instelling opslaan. Ook zonder antwoord blijven jouw eerdere keuzes staan. Je kunt de tests draaien om te zien of dit voor alle bestanden werkt.',
+  ],
+  sv: [
+    'Jag har granskat ändringarna och lagt till några tester. Inställningarna ändras inte när ett svar saknas, eftersom vi bara sparar ett giltigt svar. Du kan också se hur detta fungerar innan du går vidare.',
+    'I register.tsx är kontrollen av svaret klar, och inga tidigare val går förlorade. Testerna visar vad som händer utan svar och hur panelen ser ut efter en omstart. Nu kan du även granska dessa ändringar i appen.',
+  ],
+  da: [
+    'Jeg har gennemgået ændringerne og tilføjet nogle test. Der er ikke noget, som overskriver dine indstillinger, selvom et svar mangler. Du kan se, hvad der sker uden et svar, inden du fortsætter med resten af opgaven.',
+    'I register.tsx gemmer vi kun et gyldigt svar, uden at ændre nogen af dine tidligere valg. Testene viser dig, hvad der sker ved fejl, så du kan kontrollere nogle af værdierne i panelet, inden du går videre.',
+  ],
+  nb: [
+    'Jeg har gått gjennom endringene og lagt til noen tester. Ingen av de tidligere valgene ble overskrevet, slik at du kan fortsette uten å velge på nytt. Etter testen kan du se hva som skjer dersom et svar mangler.',
+    'I register.tsx blir svaret sjekket uten at noen av valgene dine går tapt. Testene viser hva som skjer etter en feil, og bare gyldige svar blir lagret. Dere kan nå sjekke at panelet viser våre verdier slik det skal.',
+  ],
+  fi: [
+    'Tarkistin muutokset ja lisäsin testit, jotka varmistavat asetusten säilymisen. Jos vastausta ei tule, vanhat valinnat eivät muutu. Nyt voit tarkistaa myös näkymän ennen kuin jatkat muihin muutoksiin.',
+    'Tiedostossa register.tsx vastaus tarkistetaan ennen asetusten tallennusta. Tämä säilyttää valinnat myös silloin, kun pyyntö epäonnistuu. Testit ovat valmiit, mutta voit vielä katsoa, että paneeli näyttää oikeat arvot.',
+  ],
+  tr: [
+    'Değişiklikleri inceledim ve bir yanıt gelmediğinde önceki ayarların korunması için testler ekledim. Bu sayede istek başarısız olsa bile seçimleriniz değişmez. Ancak devam etmeden önce paneldeki değerleri de kontrol edin.',
+    'register.tsx içinde yanıt artık kayıttan önce denetleniyor. Eğer istek başarısız olursa eski ayarlar korunuyor ve boş bir değer yazılmıyor. Testler hazır, ancak bu değişikliğin panelde nasıl göründüğünü de inceleyebilirsiniz.',
+  ],
+  id: [
+    'Saya sudah memeriksa perubahan dan menambahkan pengujian untuk permintaan yang gagal. Jika belum ada balasan, pilihan Anda tidak akan berubah. Anda juga dapat memeriksa tampilan agar nilai yang muncul tetap sesuai.',
+    'Di register.tsx, balasan diperiksa sebelum pengaturan disimpan. Dengan ini, pilihan Anda tidak hilang jika permintaan gagal. Pengujian sudah siap, tetapi Anda masih perlu melihat apakah panel menampilkan nilai yang benar.',
+  ],
+  vi: [
+    'Tôi đã kiểm tra các thay đổi và thêm kiểm thử cho trường hợp yêu cầu thất bại. Nếu không có phản hồi thì lựa chọn của bạn vẫn được giữ lại. Bạn có thể xem giao diện trước khi tiếp tục công việc.',
+    'Trong register.tsx, phản hồi được kiểm tra trước khi lưu cài đặt. Các giá trị cũ không bị thay thế khi yêu cầu thất bại. Bạn có thể chạy kiểm thử và xem những giá trị này có hiển thị đúng trong bảng hay không.',
+  ],
+  th: [
+    'ตรวจสอบการเปลี่ยนแปลงและเพิ่มการทดสอบกรณีคำขอล้มเหลวแล้ว หากยังไม่มีคำตอบจะเก็บการตั้งค่าเดิมไว้ คุณสามารถตรวจสอบค่าที่แสดงในแผงก่อนทำงานส่วนถัดไปได้',
+    'เพิ่มการตรวจสอบคำตอบใน register.tsx ก่อนบันทึกการตั้งค่าแล้ว เมื่อคำขอล้มเหลวจะไม่แทนที่ค่าที่เลือกไว้ คุณสามารถเรียกคำสั่งทดสอบแล้วตรวจสอบว่าแผงแสดงค่าถูกต้องหลังเปิดแอปใหม่หรือไม่',
+  ],
+  fil: [
+    'Sinuri ko ang mga pagbabago at nagdagdag ng pagsusuri para sa mga request na pumapalya. Hindi mababago ang iyong mga pinili kapag walang sagot. Maaari mong tingnan ang panel upang matiyak na tama ang mga halagang ipinapakita.',
+    'Sa register.tsx, sinusuri muna ang sagot bago i-save ang mga setting. Hindi mawawala ang iyong mga pinili kung pumalya ang request. Handa na ang mga pagsusuri, kaya maaari mong patakbuhin ang mga ito at tingnan ang panel.',
+  ],
 } satisfies Partial<Record<Lang, readonly string[]>>
 
 const ENGLISH = DETECTION_SAMPLES.en[0]!
@@ -324,6 +364,24 @@ test('every detection sample belongs only to its own language', () => {
   }
 })
 
+const UNIT_THREE = ['nl', 'sv', 'da', 'nb', 'fi', 'tr', 'id', 'vi', 'th', 'fil'] as const
+
+test('unit three samples never select another locale and include a file name', () => {
+  for (const lang of UNIT_THREE) {
+    expect(DETECTION_SAMPLES[lang].some(sample => sample.includes('register.tsx'))).toBe(true)
+    for (const sample of DETECTION_SAMPLES[lang]) {
+      const found = detect(sample)
+      expect(found?.lang).toBe(lang)
+      for (const other of LANGS.filter(code => code !== lang)) expect(found?.lang).not.toBe(other)
+    }
+  }
+})
+
+test('Thai marks have no width and Vietnamese diacritics retain Latin widths', () => {
+  expect(estimateWidth('กิุ่', 14)).toBe(estimateWidth('ก', 14))
+  expect(estimateWidth('ăâêôơưắầệốớự', 14)).toBe(estimateWidth('aaeoouaaeoou', 14))
+})
+
 test('new language hints recognise locales, bare codes, English and native names', () => {
   const hints: Partial<Record<Lang, string[]>> = {
     'zh-Hant': ['zh_TW.UTF-8', 'zh_HK', 'zh_MO', 'zh-Hant', 'Traditional Chinese', '繁體中文', '繁体'],
@@ -337,6 +395,16 @@ test('new language hints recognise locales, bare codes, English and native names
     it: ['it_IT.UTF-8', 'it', 'Italian', 'Italiano'],
     ru: ['ru_RU.UTF-8', 'ru', 'Russian', 'Русский'],
     uk: ['uk_UA.UTF-8', 'uk', 'Ukrainian', 'Українська'],
+    nl: ['nl_NL.UTF-8', 'nl_BE', 'nl', 'Dutch', 'Nederlands'],
+    sv: ['sv_SE.UTF-8', 'sv', 'Swedish', 'Svenska'],
+    da: ['da_DK.UTF-8', 'da', 'Danish', 'Dansk'],
+    nb: ['nb_NO.UTF-8', 'no_NO', 'nn_NO', 'nb', 'no', 'nn', 'Norwegian', 'Norsk', 'Norsk bokmål'],
+    fi: ['fi_FI.UTF-8', 'fi', 'Finnish', 'Suomi'],
+    tr: ['tr_TR.UTF-8', 'tr', 'Turkish', 'Türkçe'],
+    id: ['id_ID.UTF-8', 'in_ID', 'id', 'in', 'Indonesian', 'Bahasa Indonesia'],
+    vi: ['vi_VN.UTF-8', 'vi', 'Vietnamese', 'Tiếng Việt'],
+    th: ['th_TH.UTF-8', 'th', 'Thai', 'ไทย'],
+    fil: ['fil_PH.UTF-8', 'tl_PH', 'fil', 'tl', 'Filipino', 'Tagalog'],
   }
   for (const [lang, samples] of Object.entries(hints)) {
     for (const hint of samples) expect(langFrom(hint)).toBe(lang)
@@ -381,7 +449,7 @@ test('the most recent single hit fits the history caption', () => {
   for (const lang of LANGS) expect(estimateWidth(MESSAGES[lang].historyAll(1), 12) <= 120).toBe(true)
 })
 
-for (const lang of ['ja', 'fr'] as const) {
+for (const lang of ['ja', 'fr', 'nb', 'th'] as const) {
   test(lang + ' pin changes the cache-status language', async ($, on) => {
     mock.clock(on, { now: 1_700_000_000_000 })
     mock.store(on)
