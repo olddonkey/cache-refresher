@@ -2,6 +2,7 @@ import type { Elements, RenderElement, RenderNode } from 'claude-code'
 
 import type { Snapshot } from '../types'
 import { TTL_MS, fmtRemaining, fmtSpan, fmtTokens, fmtUsd } from './economics'
+import { MESSAGES } from './messages'
 import type { Messages } from './messages'
 import { LEAD_MS, budgetOf, costsOf, isTracked, remainingOf } from './model'
 import type { Verdict, View } from './model'
@@ -15,9 +16,9 @@ const SLATE = '#5F7D95'
 // For drawings that cannot follow the theme: a gray that reads on light and dark alike.
 const TRACK = 'rgba(128,128,128,0.3)'
 const VERDICT_HEX: Record<Verdict, string> = { hit: EMBER, partial: EMBER, miss: SLATE }
-const FONT = "system-ui, -apple-system, 'PingFang SC', sans-serif"
 const INK = '#1A1A18'
 const SECONDARY = '#66655F'
+type DrawingLocale = Pick<Messages, 'tag' | 'fonts'>
 
 // Measured on the desktop app: a docked pane leaves this column 314px wide, lays rows out in 8px steps,
 // and draws its buttons 24px tall. The panel is drawn to those numbers; a wider pane leaves the rest empty.
@@ -32,9 +33,12 @@ const METER_CELLS = 28
 // The words inside a drawing follow the person's light or dark appearance, which only a drawing's own
 // style sheet can ask about: a mod is never told the theme. Each word also carries its light color as an
 // attribute, so a surface that drops the style sheet still draws it.
-const STYLE =
-  `<style>text{font-family:${FONT}}.ink{fill:${INK}}.sec{fill:${SECONDARY}}.track{stroke:#E3E1DA}.bar{fill:#C9C7BF}` +
-  '@media (prefers-color-scheme: dark){.ink{fill:#ECEBE6}.sec{fill:#A3A29C}.track{stroke:#45443F}.bar{fill:#5C5B55}}</style>'
+function styleOf(fonts: string): string {
+  const font = `system-ui, -apple-system${fonts ? `, ${fonts}` : ''}, sans-serif`
+
+  return `<style>text{font-family:${font}}.ink{fill:${INK}}.sec{fill:${SECONDARY}}.track{stroke:#E3E1DA}.bar{fill:#C9C7BF}` +
+    '@media (prefers-color-scheme: dark){.ink{fill:#ECEBE6}.sec{fill:#A3A29C}.track{stroke:#45443F}.bar{fill:#5C5B55}}</style>'
+}
 
 // Motion. The panel is still while nothing changes: a movement marks a change of state and then stops.
 // What arrives eases out; what repeats eases both ways.
@@ -179,10 +183,10 @@ function ring(o: Ring, motion: Motion): string {
 }
 
 /** The band's mark: the ring alone, small. */
-export function dialSvg(left: number, isCold: boolean, isClosing: boolean, motion: Motion = STILL): string {
+export function dialSvg(left: number, isCold: boolean, isClosing: boolean, motion: Motion = STILL, locale: DrawingLocale = MESSAGES.en): string {
   const drawn = ring({ center: 9, radius: 6.5, stroke: 3, left, isCold, isClosing, mark: null }, { ...motion, sinceOpen: null })
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18">${STYLE}${drawn}</svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" lang="${locale.tag}" viewBox="0 0 18 18">${styleOf(locale.fonts)}${drawn}</svg>`
 }
 
 type Card = {
@@ -196,6 +200,7 @@ type Card = {
   motion: Motion
   /** The lapse set against a ping, or null where the model has no known price. */
   costs: { lapseLabel: string; lapseUsd: string; pingLabel: string; pingUsd: string; share: number; note: string } | null
+  locale?: DrawingLocale
 }
 
 /**
@@ -203,6 +208,7 @@ type Card = {
  * Only a drawing sets type at sizes of its own, so everything that is read rather than pressed is drawn.
  */
 export function cardSvg(o: Card): { source: string; height: number } {
+  const locale = o.locale ?? MESSAGES.en
   const width = PANEL_PIXELS
   const hex = o.isCold ? SLATE : EMBER
   const parts = [
@@ -232,14 +238,14 @@ export function cardSvg(o: Card): { source: string; height: number } {
 
   return {
     height,
-    source: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}">${STYLE}${parts.join('')}</svg>`,
+    source: `<svg xmlns="http://www.w3.org/2000/svg" lang="${locale.tag}" viewBox="0 0 ${width} ${height}">${styleOf(locale.fonts)}${parts.join('')}</svg>`,
   }
 }
 
 type LabelStyle = 'title' | 'body' | 'count' | 'small'
 
 /** One line of words drawn in the card's own type, to sit beside a button: 20px tall, or 16px when small. */
-export function labelSvg(text: string, width: number, style: LabelStyle): { source: string; height: number } {
+export function labelSvg(text: string, width: number, style: LabelStyle, locale: DrawingLocale = MESSAGES.en): { source: string; height: number } {
   const isSmall = style === 'small'
   const height = isSmall ? 16 : 20
   const isInk = style === 'title' || style === 'count'
@@ -250,12 +256,12 @@ export function labelSvg(text: string, width: number, style: LabelStyle): { sour
 
   return {
     height,
-    source: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}">${STYLE}<text x="${x}" y="${isSmall ? 12 : 14.5}" font-size="${isSmall ? 12 : 14}"${weight} text-anchor="${anchor}" class="${isInk ? 'ink' : 'sec'}" fill="${isInk ? INK : SECONDARY}"${numerals}>${escapeXml(text)}</text></svg>`,
+    source: `<svg xmlns="http://www.w3.org/2000/svg" lang="${locale.tag}" viewBox="0 0 ${width} ${height}">${styleOf(locale.fonts)}<text x="${x}" y="${isSmall ? 12 : 14.5}" font-size="${isSmall ? 12 : 14}"${weight} text-anchor="${anchor}" class="${isInk ? 'ink' : 'sec'}" fill="${isInk ? INK : SECONDARY}"${numerals}>${escapeXml(text)}</text></svg>`,
   }
 }
 
 /** How the cache has held: a dot per recent touch, then the sentence, set against the right edge. */
-export function historySvg(verdicts: readonly Verdict[], summary: string): { source: string; height: number } {
+export function historySvg(verdicts: readonly Verdict[], summary: string, locale: DrawingLocale = MESSAGES.en): { source: string; height: number } {
   const width = HISTORY_PIXELS
   // The sentence is anchored at the right edge; the dots sit to its left, by the width its 12px type takes.
   const wordsWidth = cells(summary) * 6.2
@@ -267,7 +273,7 @@ export function historySvg(verdicts: readonly Verdict[], summary: string): { sou
 
   return {
     height: 16,
-    source: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} 16">${STYLE}${dots}<text x="${width}" y="12" font-size="12" text-anchor="end" class="sec" fill="${SECONDARY}">${escapeXml(summary)}</text></svg>`,
+    source: `<svg xmlns="http://www.w3.org/2000/svg" lang="${locale.tag}" viewBox="0 0 ${width} 16">${styleOf(locale.fonts)}${dots}<text x="${width}" y="12" font-size="12" text-anchor="end" class="sec" fill="${SECONDARY}">${escapeXml(summary)}</text></svg>`,
   }
 }
 
@@ -313,7 +319,7 @@ export function bandView(
             width: 18,
             height: 18,
             isInteractive: true,
-            source: dialSvg(remaining / TTL_MS[held.ttl], remaining <= 0, isAlarming, motion),
+            source: dialSvg(remaining / TTL_MS[held.ttl], remaining <= 0, isAlarming, motion, m),
           })
         : Text({ color: remaining > 0 ? EMBER : SLATE, children: [remaining > 0 ? '●' : '○'] }),
       Text({ bold: true, ...emphasis, children: [head] }),
@@ -347,7 +353,7 @@ export function paneView(
     if (!Svg) {
       return Text({ ...(style === 'title' ? { bold: true } : style === 'count' ? {} : { dimColor: true }), children: [text] })
     }
-    const drawn = labelSvg(text, width, style)
+    const drawn = labelSvg(text, width, style, m)
 
     return Svg({ alt: text, width, height: drawn.height, source: drawn.source })
   }
@@ -385,6 +391,7 @@ export function paneView(
 
     if (Svg) {
       const card = cardSvg({
+        locale: m,
         figure,
         caption,
         left: remaining / TTL_MS[tracked.ttl],
@@ -522,7 +529,7 @@ export function paneView(
     recent.length === 0 ? m.historyEmpty : misses === 0 ? m.historyAll(recent.length) : m.historySome(recent.length, misses)
   let history: RenderNode
   if (Svg) {
-    const drawn = historySvg(recent.map(one => one.verdict), summary)
+    const drawn = historySvg(recent.map(one => one.verdict), summary, m)
     history = Svg({ alt: summary, width: HISTORY_PIXELS, height: drawn.height, source: drawn.source })
   } else {
     history = Box({
@@ -577,7 +584,7 @@ export function paneView(
             alt: '—',
             width: PANEL_PIXELS,
             height: 1,
-            source: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${PANEL_PIXELS} 1"><rect width="${PANEL_PIXELS}" height="1" fill="${TRACK}"/></svg>`,
+            source: `<svg xmlns="http://www.w3.org/2000/svg" lang="${m.tag}" viewBox="0 0 ${PANEL_PIXELS} 1"><rect width="${PANEL_PIXELS}" height="1" fill="${TRACK}"/></svg>`,
           }),
           Box({ flexDirection: 'column', rowGap: 1, children: switchRows }),
         ],
