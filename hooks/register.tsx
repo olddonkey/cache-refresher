@@ -107,7 +107,7 @@ async function hear($: EngineInterface, answer: string): Promise<void> {
   const found = detect(answer)
   if (found === null) return
   const now = await speaking($)
-  const followed = follow(heard, found, heardLang ?? undefined)
+  const followed = follow(heard, found, heardLang ?? now.lang)
   heard = followed.tally
   const { lang } = followed
   if (lang !== heardLang) {

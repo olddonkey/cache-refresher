@@ -1,0 +1,111 @@
+import type { Snapshot } from '../../types'
+import type { Messages } from './en'
+import { makeSpan } from './shared'
+import type { Verdict } from './shared'
+
+const SOURCE_RU: Record<Snapshot['ttlSource'], string> = { env: 'окружение', observed: 'наблюдение', assumed: 'предположение' }
+const BY_RU: Record<Snapshot['touchedBy'], string> = { turn: 'сообщение', ping: 'продление', resume: 'возобновление сеанса' }
+const AFTER_RU: Record<Snapshot['touchedBy'], string> = { turn: 'сообщения', ping: 'продления', resume: 'возобновления сеанса' }
+const VERDICT_RU: Record<Verdict, string> = { hit: 'попадание', partial: 'частичное попадание', miss: 'промах' }
+const spanRu = makeSpan({ units: { s: 'с', m: 'мин', h: 'ч' } })
+
+function plural(n: number, one: string, few: string, many: string): string {
+  if (n % 100 >= 11 && n % 100 <= 14) return many
+
+  return n % 10 === 1 ? one : n % 10 >= 2 && n % 10 <= 4 ? few : many
+}
+
+// Активен до истечения срока; продление восстанавливает срок, затем пересоздание. Обращение на «вы».
+export const ru: Messages = {
+  name: 'Русский',
+  tag: 'ru',
+  fonts: '',
+
+  bandCold: 'Истёк',
+  bandUnusable: 'Недоступен',
+  bandWarmDetail: (size, cost) => `${size} в кеше${cost && ` · пересоздание после истечения: ${cost}`}`,
+  bandAutoDetail: (size, used, budget) => `${size} в кеше · автопродление ${used}/${budget}`,
+  bandColdDetail: (size, cost) => `следующее сообщение пересоздаст ${size} токенов${cost && ` (≈${cost})`}`,
+  cmdStatus: 'Показать состояние кеша промптов, остаток времени и оценку стоимости пересоздания',
+  cmdPing: 'Продлить кеш промптов сейчас',
+  cmdAuto: 'Посмотреть или изменить автопродление',
+  cmdAutoHint: '[on|off] [лимит продлений]',
+  cmdLang: 'Выбрать язык интерфейса',
+  cmdLangHint: '[auto|код]',
+  expiredAgo: gap => `срок истёк ${spanRu(gap)} назад`,
+  coldPing: 'последнее продление дало промах кеша',
+  coldModel: model => `модель изменена на ${model}`,
+  pingNothing: 'В кеше ещё ничего нет, продлевать нечего.',
+  pingBusy: 'Продление уже выполняется.',
+  pingCold: (why, size) => `Не отправлено: кеш неактивен (${why}). Сейчас запрос пересоздаст все ${size} токенов по цене записи в кеш. Чтобы всё равно отправить, выполните /cache-ping force.`,
+  pingNoFork: 'Не отправлено: в этом разговоре ещё нет ответа.',
+  pingApiError: (error, status) => `Продление не удалось: ошибка API (${error}, статус ${status ?? 'нет'}). Отсчёт не был сброшен.`,
+  pingCut: 'Продление прервано до ответа API. Отсчёт не был сброшен.',
+  counts: c => `прочитано ${c.read}, записано ${c.wrote}, вход ${c.input}, выход ${c.output}`,
+  atListPrice: usd => ` ≈${usd} по прейскуранту.`,
+  pingHit: (counts, cost, ttl) => `Кеш продлён: ${counts}.${cost} Отсчёт сброшен до ${spanRu(ttl)}.`,
+  pingRewrote: (counts, cost) => `Промах кеша. Кеш пересоздан: ${counts}.${cost}`,
+  pingMissed: (counts, cost) => `Промах кеша: ${counts}.${cost} Кеш не был продлён.`,
+  autoLog: (n, budget, text) => `Автопродление ${n}/${budget}. ${text}`,
+  autoMissToast: 'Автопродление не удалось. См. /cache-status',
+  reportNothing: 'Кеш промптов: пока пуст. Отсчёт начнётся после следующего ответа.',
+  reportWarm: left => `Кеш промптов: активен, осталось ${spanRu(left)}.`,
+  reportCold: why => `Кеш промптов: неактивен (${why}).`,
+  reportTtl: (ttl, source) => `  Срок: ${spanRu(ttl)} (${SOURCE_RU[source]})`,
+  reportCached: (size, model, by, since) => `  В кеше: ${size} токенов на ${model}, последнее использование ${spanRu(since)} назад (${BY_RU[by]})`,
+  reportNoPrice: '  Стоимость: цены для этой модели недоступны',
+  reportLapse: (lapse, rewrite) => `  При истечении: ${rewrite} за пересоздание, на ${lapse} больше, чем при попадании в кеш`,
+  reportPing: (ping, isMeasured, max) => `  Одно продление: около ${ping} (добавочные токены: ${isMeasured ? 'измерение' : 'оценка'}). До ${max} ${plural(max, 'продления', 'продлений', 'продлений')} подряд дешевле одного пересоздания`,
+  reportPingNone: (ping, isMeasured) => `  Одно продление: около ${ping} (добавочные токены: ${isMeasured ? 'измерение' : 'оценка'}). Это больше доплаты при истечении срока, поэтому продлевать невыгодно`,
+  reportRule: (ttl, percent) => `  Ориентир: продление выгодно, если вероятность вашего возвращения в течение ${spanRu(ttl)} выше ${percent}%`,
+  reportLastPing: (ago, counts) => `  Последнее продление: ${spanRu(ago)} назад, ${counts}`,
+  reportTouches: 'Последние обращения к кешу:',
+  reportTouch: (kind, gap, prevBy, ttl, verdict, read, cached) => `  ${BY_RU[kind]}, через ${spanRu(gap)} после ${AFTER_RU[prevBy]} (${spanRu(ttl)}): ${VERDICT_RU[verdict]}, прочитано ${read} из ${cached}`,
+  reportFooter: 'Стоимость оценена по прейскуранту API. В подписке это расход лимита плана, а не списание денег.',
+  autoHeader: 'Автопродление:',
+  autoOff: '  Автопродление: выключено (выполните /cache-auto on, чтобы кеш оставался активным в ваше отсутствие)',
+  autoWaiting: cap => `  Автопродление: включено, до ${cap} ${plural(cap, 'продления', 'продлений', 'продлений')} за период простоя. Ожидание первого ответа`,
+  autoOn: (used, budget, cap, next) => `  Автопродление: включено, использовано ${used} из ${budget} после последнего сообщения (лимит ${cap}). Следующее: ${spanRu(next)}`,
+  autoOnNone: cap => `  Автопродление: включено (лимит ${cap}), без отправки: продление дороже доплаты при истечении срока этого кеша`,
+  nextCold: 'нет, кеш неактивен',
+  nextSpent: 'нет, лимит этого периода простоя исчерпан',
+  nextIn: time => `через ${spanRu(time)}`,
+  nextNow: 'в любой момент',
+  autoPings: state => `  Эффект: ${state}`,
+  extendsYes: ttl => `подтверждён, продление восстанавливает весь срок в ${spanRu(ttl)}`,
+  extendsNo: 'не подтверждён. За последним продлением был промах, поэтому за период простоя отправляется только одно',
+  extendsUnknown: ttl => `пока не подтверждён. Одно продление за период простоя, пока не установлено, что оно восстанавливает весь срок в ${spanRu(ttl)}`,
+  autoNote: '  Примечание: продления отправляются только при работающем приложении и бодрствующем компьютере; каждое расходует лимит плана или кредит API',
+  autoUsage: max => `Использование: /cache-auto [on|off] [лимит за период простоя, 1-${max}]`,
+  details: 'Детали ›',
+  cmdPanel: 'Открыть панель кеша промптов',
+  paneTitle: 'Кеш промптов',
+  paneNothing: 'Пока пуст. Отсчёт начнётся после следующего ответа.',
+  heroLeft: size => `осталось · ${size} токенов в кеше`,
+  heroAuto: (time, span) => `${time ? `продлим через ${/^\d+:\d\d$/.test(time) ? time : spanRu(time)}` : 'скоро продление'} · до ~${spanRu(span)}`,
+  heroCold: (size, cost) => `пересоздать ${size}${cost && ` (≈${cost})`}`,
+  heroPinging: 'Продление…',
+  rowLapse: 'При истечении',
+  rowPing: 'Продление',
+  breakEven: max => `${max} ${plural(max, 'продление', 'продления', 'продлений')} ≈ 1 пересоздание`,
+  breakEvenNone: 'Здесь продление дороже пересоздания',
+  breakEvenRule: (max, percent) => `${max} ${plural(max, 'продление', 'продления', 'продлений')} ≈ 1 пересоздание · выгодно при вероятности возврата выше ${percent}%`,
+  noPrice: 'Цены для этой модели недоступны',
+  autoTitle: 'Продлевать в простое',
+  btnOn: 'Вкл.',
+  btnOff: 'Выкл.',
+  autoPlanOff: (left, span) => `До ${left} ${plural(left, 'раза', 'раз', 'раз')}${span && ` · ~${spanRu(span)}`}`,
+  autoPlanOn: (used, budget) => `${used}/${budget} использовано`,
+  autoTrialOff: cap => `1 проба; до ${cap} при успехе`,
+  autoTrialOn: (used, cap) => `Проба ${used}/1; до ${cap} при успехе`,
+  autoSpent: 'До нового сообщения: 0',
+  autoNotWorth: 'Для этого кеша невыгодно',
+  historyAll: n => `${n} из ${n}: ${n === 1 ? 'попадание' : 'попадания'}`,
+  historySome: (n, misses) => `${misses} из ${n}: ${plural(misses, 'промах', 'промаха', 'промахов')}`,
+  historyEmpty: 'Истории пока нет',
+  btnPing: 'Продлить',
+  listPrice: 'Оценки по прейскуранту API',
+  priceNote: cap => `Оценка: до ${cap} · прейскурант API`,
+  langNow: (name, source) => `Язык: ${name} (${{ pinned: 'вручную', conversation: 'по разговору', locale: 'по системе', default: 'по умолчанию' }[source]}).`,
+  langUsage: codes => `Использование: /cache-lang [auto|код]. Коды: ${codes}`,
+}

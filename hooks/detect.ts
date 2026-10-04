@@ -43,7 +43,7 @@ export function detect(answer: string): Found | null {
   }
   if (script === undefined && (letters.latin ?? 0) >= 40) script = 'latin'
   if (script === undefined) return null
-  const locales: readonly Locale[] = LOCALES.filter(locale => locale.script === script)
+  const locales: readonly Locale[] = LOCALES.filter(locale => locale.script === script && !('variantOf' in locale))
   if (locales.length === 1 && script !== 'latin') return { lang: locales[0]!.code as Lang, weight }
 
   // Unicode word boundaries keep a short function word from matching part of another word.
@@ -66,7 +66,9 @@ export function detect(answer: string): Found | null {
 /** English-heavy replies need a sustained lead before turning a conversation back to English. */
 export function follow(tally: Record<string, number>, found: Found, current: Lang | undefined): { tally: Record<string, number>; lang: Lang } {
   const next = Object.fromEntries(Object.entries(tally).map(([code, weight]) => [code, weight / 2]))
-  next[found.lang] = (next[found.lang] ?? 0) + found.weight
+  const locale: Locale | undefined = LOCALES.find(locale => locale.code === current)
+  const counted = locale?.variantOf === found.lang ? current! : found.lang
+  next[counted] = (next[counted] ?? 0) + found.weight
   let lang = current ?? found.lang
   for (const code of LANGS) {
     if ((next[code] ?? 0) > (next[lang] ?? 0)) lang = code

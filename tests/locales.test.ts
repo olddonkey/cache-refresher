@@ -39,7 +39,7 @@ const SAMPLES: Samples = {
   reportTtl: [{ args: ['5m', 'observed'] }, { args: ['1h', 'assumed'] }],
   reportCached: [{ args: ['1.23M', MODEL, 'turn', '4:35'], free: [MODEL] }, { args: ['1.23M', MODEL, 'resume', '11.9h'], free: [MODEL] }],
   reportLapse: [{ args: ['$23.45', COST] }],
-  reportPing: [{ args: [COST, true, 200] }, { args: [COST, false, 200] }],
+  reportPing: [{ args: [COST, true, 200] }, { args: [COST, false, 200] }, { args: [COST, true, 1] }],
   reportPingNone: [{ args: [COST, true] }, { args: [COST, false] }],
   reportRule: [{ args: ['5m', '23.4'] }],
   reportLastPing: [{ args: ['4:35', COUNTS], free: [COUNTS] }],
@@ -59,14 +59,14 @@ const SAMPLES: Samples = {
   heroLeft: [{ args: ['1.23M'] }],
   heroAuto: [{ args: ['59m', '11.9h'] }, { args: ['', '11.9h'] }, { args: ['4:35', '59m'] }],
   heroCold: [{ args: ['1.23M', COST], free: [COST] }, { args: ['1.23M', ''] }],
-  breakEven: [{ args: [200] }],
-  breakEvenRule: [{ args: [200, '23.4'] }],
-  autoPlanOff: [{ args: [200, '59m'] }, { args: [200, '11.9h'] }, { args: [200, ''] }],
-  autoPlanOn: [{ args: [200, 200] }],
+  breakEven: [{ args: [200] }, { args: [1] }],
+  breakEvenRule: [{ args: [200, '23.4'] }, { args: [1, '23.4'] }],
+  autoPlanOff: [{ args: [200, '59m'] }, { args: [200, '11.9h'] }, { args: [200, ''] }, { args: [1, '11.9h'] }],
+  autoPlanOn: [{ args: [200, 200] }, { args: [1, 200] }],
   autoTrialOff: [{ args: [200] }],
   autoTrialOn: [{ args: [1, 200] }],
   historyAll: [{ args: [8] }],
-  historySome: [{ args: [8, 2] }],
+  historySome: [{ args: [8, 2] }, { args: [8, 1] }],
   priceNote: [{ args: [COST] }],
   langNow: [
     { args: ['Language 2345', 'pinned'], free: ['Language 2345'] },
@@ -257,8 +257,163 @@ test('language hints recognise registered codes and names without claiming tradi
   }
 })
 
-const ENGLISH = 'Each request that hits the cache restarts its lifetime, so the countdown starts over after every message you send.'
-const CHINESE = '新版本已经在跑了：它刚刚记录了你这条消息触发的请求，说明重载后的代码在正常工作。界面我这边看不到，需要你看 register.tsx 和 views.ts 的效果。'
+// Every language sample lives here; regional Spanish cannot be inferred from prose.
+const DETECTION_SAMPLES = {
+  en: [
+    'Each request that hits the cache restarts its lifetime, so the countdown starts over after every message you send.',
+    'The changes in register.tsx are ready, and they should keep your settings when you restart the app. These checks will show whether the new behavior works with your files.',
+  ],
+  zh: [
+    '新版本已经在跑了：它刚刚记录了你这条消息触发的请求，说明重载后的代码在正常工作。界面我这边看不到，需要你看 register.tsx 和 views.ts 的效果。',
+    '我已经检查了配置文件和错误处理流程，并补充了相关测试。现在请求失败时会保留原来的设置，不会覆盖用户的选择。你可以运行测试命令，确认修改后的行为符合预期，再继续检查界面的显示效果。',
+  ],
+  'zh-Hant': [
+    '我已檢查這次修改的邏輯，並補上對應的測試。當請求失敗時，程式會保留原本的設定，不會覆寫使用者的選擇。接下來可以確認介面的顯示結果，再檢查重新啟動後的行為是否符合預期。',
+    '這次在 register.tsx 加入了錯誤處理，讓請求中斷時仍能保留原本的設定。測試已涵蓋正常回覆與失敗的情況，你可以先執行測試，再確認面板中的文字與數值是否正確顯示。',
+  ],
+  ja: [
+    '設定を読み込む処理を確認し、失敗した場合のテストを追加しました。リクエストが中断されても、以前の設定はそのまま残ります。次に画面の表示を確認してから、変更を適用してください。',
+    'register.tsx の処理を修正し、応答がない場合にも元の設定を保持するようにしました。テストでは正常な応答とエラーの両方を確認しています。再起動した後も同じ動作になるか確認してください。',
+  ],
+  ko: [
+    '설정을 읽는 코드를 확인하고 요청이 실패하는 경우를 테스트에 추가했습니다. 이제 응답이 중단되어도 이전 설정을 유지합니다. 변경 사항을 적용하기 전에 화면에 표시되는 값과 다시 시작한 뒤의 동작을 확인하세요.',
+    'register.tsx 파일에서 오류 처리 방식을 수정했습니다. 요청이 실패해도 사용자가 선택한 설정은 그대로 남습니다. 정상 응답과 실패 상황을 모두 테스트했으니 다음으로 패널의 표시와 재시작 후 동작을 확인하세요.',
+  ],
+  'es-419': [
+    'Los cambios ya están listos, pero aún hay que comprobar las respuestas cuando falla una solicitud. La configuración del usuario se conserva y no se modifica hasta que llegue una respuesta válida.',
+    'Revisé register.tsx y añadí unas pruebas para los errores. Ahora los ajustes del usuario se conservan aunque no haya respuesta. Puedes ejecutar las pruebas y comprobar que la interfaz muestra el estado correcto.',
+  ],
+  fr: [
+    'Les modifications sont prêtes, mais nous devons encore vérifier les réponses en cas d’échec. La configuration reste intacte et vous pouvez reprendre le travail sans perdre les choix que vous avez faits.',
+    'Dans register.tsx, les erreurs sont maintenant traitées sans modifier vos réglages. Vous pouvez lancer les tests pour vérifier ce comportement, puis regarder si les valeurs affichées dans le panneau sont correctes.',
+  ],
+  de: [
+    'Die Änderungen sind fertig, aber die Antworten bei Fehlern müssen noch geprüft werden. Wenn eine Anfrage scheitert, bleibt die bisherige Einstellung erhalten und wird nicht durch einen leeren Wert ersetzt.',
+    'In register.tsx wird die Antwort jetzt geprüft, bevor eine Einstellung geändert wird. Die Tests sind ergänzt und zeigen, dass die bisherigen Werte auch dann erhalten bleiben, wenn eine Anfrage ohne Antwort endet.',
+  ],
+  'pt-BR': [
+    'Os ajustes estão prontos, mas ainda precisamos verificar as respostas quando uma solicitação falha. A configuração do usuário não muda, e você pode continuar com suas escolhas sem perder o que já foi definido.',
+    'No arquivo register.tsx, os erros são tratados sem alterar suas preferências. Você pode executar os testes para verificar os resultados e também conferir se os valores do painel estão corretos após reiniciar o aplicativo.',
+  ],
+  it: [
+    'Le modifiche sono pronte, quindi possiamo verificare il comportamento della richiesta quando non arriva una risposta. La configurazione degli utenti rimane invariata e il contenuto della schermata può essere controllato prima di procedere.',
+    'Il file register.tsx ora conserva le impostazioni della sessione anche quando la richiesta non riesce. I test sono stati aggiunti, quindi puoi verificare che il pannello mostri gli stessi valori dopo il riavvio.',
+  ],
+  ru: [
+    'Изменения готовы, но нужно проверить обработку ошибок при сбое запроса. Прежние настройки сохраняются, поэтому пользователь сможет продолжить работу без повторного выбора параметров после получения ответа.',
+    'В register.tsx добавлена проверка ответа перед сохранением настроек. Если запрос завершится ошибкой, прежние значения останутся на месте. Теперь можно запустить тесты и проверить отображение панели после перезапуска.',
+  ],
+  uk: [
+    'Зміни готові, але ще потрібно перевірити обробку помилок під час запиту. Попередні налаштування зберігаються, тому користувач зможе продовжити роботу без повторного вибору параметрів після отримання відповіді.',
+    'У register.tsx додано перевірку відповіді перед збереженням налаштувань. Якщо запит завершиться помилкою, попередні значення залишаться на місці. Тепер можна запустити тести й перевірити відображення панелі після перезапуску.',
+  ],
+} satisfies Partial<Record<Lang, readonly string[]>>
+
+const ENGLISH = DETECTION_SAMPLES.en[0]!
+const CHINESE = DETECTION_SAMPLES.zh[0]!
+
+test('every detection sample belongs only to its own language', () => {
+  const detectable = LOCALES.filter(locale => !('variantOf' in locale)).map(locale => locale.code)
+  expect(Object.keys(DETECTION_SAMPLES).sort()).toEqual(detectable.sort())
+  for (const [lang, samples] of Object.entries(DETECTION_SAMPLES)) {
+    expect(samples).toHaveLength(2)
+    for (const sample of samples) {
+      expect(sample.match(/\p{L}/gu)!.length >= 60).toBe(true)
+      expect(detect(sample)?.lang).toBe(lang)
+    }
+  }
+})
+
+test('new language hints recognise locales, bare codes, English and native names', () => {
+  const hints: Partial<Record<Lang, string[]>> = {
+    'zh-Hant': ['zh_TW.UTF-8', 'zh_HK', 'zh_MO', 'zh-Hant', 'Traditional Chinese', '繁體中文', '繁体'],
+    ja: ['ja_JP.UTF-8', 'ja', 'Japanese', '日本語'],
+    ko: ['ko_KR.UTF-8', 'ko', 'Korean', '한국어'],
+    es: ['es_ES.UTF-8', 'es', 'Spanish (Spain)', 'Español (España)'],
+    'es-419': ['es_MX.UTF-8', 'es_AR', 'es_US', 'es-419', 'Spanish', 'Español', 'Castellano'],
+    fr: ['fr_FR.UTF-8', 'fr_CA', 'fr', 'French', 'Français'],
+    de: ['de_DE.UTF-8', 'de_AT', 'de_CH', 'de', 'German', 'Deutsch'],
+    'pt-BR': ['pt_BR.UTF-8', 'pt_PT', 'pt', 'pt-BR', 'Portuguese', 'Português'],
+    it: ['it_IT.UTF-8', 'it', 'Italian', 'Italiano'],
+    ru: ['ru_RU.UTF-8', 'ru', 'Russian', 'Русский'],
+    uk: ['uk_UA.UTF-8', 'uk', 'Ukrainian', 'Українська'],
+  }
+  for (const [lang, samples] of Object.entries(hints)) {
+    for (const hint of samples) expect(langFrom(hint)).toBe(lang)
+  }
+})
+
+test('Spanish replies count toward the variant in force', () => {
+  const found = detect(DETECTION_SAMPLES['es-419'][0]!)!
+  expect(found.lang).toBe('es-419')
+  expect(follow({}, found, 'es')).toEqual({ tally: { es: found.weight }, lang: 'es' })
+  expect(follow({}, found, 'en').lang).toBe('es-419')
+  expect(follow({ es: 100 }, found, 'es').tally.es).toBe(50 + found.weight)
+})
+
+test('Chinese marks distinguish scripts without common Japanese spellings', () => {
+  const simplified = LOCALES.find(locale => locale.code === 'zh')!.marks
+  const traditional = LOCALES.find(locale => locale.code === 'zh-Hant')!.marks
+  for (const marks of [simplified, traditional]) {
+    expect(new Set(marks.source.slice(1, -1)).size >= 60).toBe(true)
+    for (const char of '国会学校来体点数与写参録設計選連載運進過遠達現線級統組織結終網頁鍵錯針問閉開緩縮複僅並状態額費資優勢輸獲誤則負庫業務層減損剰将軟径営称装還為') {
+      expect(marks.test(char)).toBe(false)
+    }
+  }
+  for (const char of simplified.source.slice(1, -1)) expect(traditional.test(char)).toBe(false)
+})
+
+test('catalog sentences retain point decimals and translate clock units', () => {
+  for (const lang of LANGS) {
+    const m = MESSAGES[lang]
+    for (const text of [m.reportCached('857k', MODEL, 'turn', '11.9h'), m.heroAuto('52m', '11.9h'), m.autoPlanOff(200, '11.9h')]) {
+      expect(text).toContain('11.9')
+      expect(text).not.toContain('11,9')
+    }
+    if (lang === 'en') continue
+    for (const text of [m.reportWarm('4:35'), m.nextIn('52m'), m.expiredAgo('42s'), m.pingHit(COUNTS, COST, '5m')]) {
+      for (const compact of ['4:35', '52m', '42s', '5m']) expect(text).not.toContain(compact)
+    }
+  }
+})
+
+test('the most recent single hit fits the history caption', () => {
+  for (const lang of LANGS) expect(estimateWidth(MESSAGES[lang].historyAll(1), 12) <= 120).toBe(true)
+})
+
+for (const lang of ['ja', 'fr'] as const) {
+  test(lang + ' pin changes the cache-status language', async ($, on) => {
+    mock.clock(on, { now: 1_700_000_000_000 })
+    mock.store(on)
+    mock.env(on, { LANG: 'en_US.UTF-8' })
+    on('ui.invalidate', () => ({ value: undefined }))
+    const pinned = await $.command.run({ command: 'cache-lang', args: lang })
+    expect(pinned.text).toBe(MESSAGES[lang].langNow(MESSAGES[lang].name, 'pinned'))
+    const status = await $.command.run({ command: 'cache-status', args: '' })
+    expect(status.text).toBe(MESSAGES[lang].reportNothing + '\n' + MESSAGES[lang].autoOff)
+  })
+}
+
+for (const start of ['locale-es', 'pinned-es', 'locale-en'] as const) {
+  test('Spanish follows ' + start + ' before any reply was heard', async ($, on) => {
+    mock.clock(on, { now: 1_700_000_000_000 })
+    mock.store(on, start === 'pinned-es' ? { lang: 'es' } : {})
+    mock.env(on, { LANG: start === 'locale-es' ? 'es_ES.UTF-8' : 'en_US.UTF-8' })
+    on('ui.invalidate', () => ({ value: undefined }))
+    on('turn.step', async function* (_, e) {
+      return {
+        turnId: e.turnId, index: e.index, answer: DETECTION_SAMPLES['es-419'][0]!, toolUses: [], stopReason: 'end_turn',
+        usage: { input_tokens: 12, output_tokens: 300, cache_read_input_tokens: 80_000, cache_creation_input_tokens: 0, model: 'claude-sonnet-5-5' },
+      }
+    })
+    const step = $.turn.step({ turnId: 't1', index: 0, model: 'claude-sonnet-5-5', messageCount: 1 })
+    for await (const _ of step) void _
+    await step.result
+    const lang = start === 'locale-en' ? 'es-419' : 'es'
+    const after = await $.command.run({ command: 'cache-lang', args: start === 'pinned-es' ? 'auto' : '' })
+    expect(after.text).toBe(MESSAGES[lang].langNow(MESSAGES[lang].name, 'conversation'))
+  })
+}
 
 test('detection hears prose, requires evidence for English and bounds its weight', () => {
   expect(detect(ENGLISH)?.lang).toBe('en')
@@ -273,8 +428,8 @@ test('detection hears prose, requires evidence for English and bounds its weight
   expect(detect(french)?.lang ?? null).toBe(LANGS.find(code => code === ('fr' as Lang)) ?? null)
   expect(detect('therein within formation otherwise ' + 'abcdef'.repeat(10))).toBe(null)
   expect(detect('a the ' + 'b'.repeat(50))).toBe(null)
-  expect(detect('A THE AND ' + 'b'.repeat(50))?.lang).toBe('en')
-  expect(detect('the and a ' + 'b'.repeat(700))?.weight).toBe(600 - 3)
+  expect(detect('A THE AND WITH ' + 'b'.repeat(50))?.lang).toBe('en')
+  expect(detect('the and with ' + 'b'.repeat(700))?.weight).toBe(600 - 3)
   expect(detect(' '.repeat(600) + ENGLISH)).toBe(null)
   // Unregistered scripts count toward the total without borrowing the Han default.
   if (!LOCALES.some(locale => (locale.script as Script) === 'hangul')) {
