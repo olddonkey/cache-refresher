@@ -1,0 +1,4 @@
+{
+  "description": "The cache-refresher hooks module",
+  "modules": ["./register.tsx"]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "cache-refresher",
+  "version": "0.1.0",
+  "description": "Shows when the prompt cache expires and what a lapse would cost, and can keep it warm with keep-alive pings while you are away",
+  "author": {
+    "name": "olddonkey",
+    "url": "https://github.com/olddonkey"
+  },
+  "homepage": "https://github.com/olddonkey/cache-refresher",
+  "repository": "https://github.com/olddonkey/cache-refresher",
+  "license": "MIT",
+  "keywords": ["prompt-cache", "cost", "mod"],
+  "types": "./types/index.d.ts"
+}

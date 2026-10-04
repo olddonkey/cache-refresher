@@ -1,0 +1,570 @@
+import { atom, read, update } from 'claude-code'
+import type { EngineInterface, ModelUsage, Register } from 'claude-code'
+
+import type { Snapshot, Ttl } from '../types'
+import { PING_MARGIN_MS, TTL_MS, WRITE_MULTIPLIER, fmtRemaining, fmtTokens, fmtUsd, priceOf } from './economics'
+import { MESSAGES, langFrom } from './messages'
+import type { Lang, LangSource } from './messages'
+import {
+  COLD_MODEL,
+  COLD_PING,
+  HIT,
+  LEAD_MS,
+  budgetOf,
+  coldWords,
+  extensionEvidence,
+  isTracked,
+  remainingOf,
+  verdictOf,
+} from './model'
+import type { Extension, Observation, Verdict, View } from './model'
+import { autoLines, report } from './report'
+import { ENTER_MS, REFILL_MS, bandView, paneView } from './views'
+import type { Motion } from './views'
+
+const DEFAULT_CAP = 12
+const MAX_CAP = 200
+
+const PANE = 'cache'
+
+const snap = atom({ plugin: 'cache-refresher', key: 'snapshot' } as const, null)
+const auto = atom({ plugin: 'cache-refresher', key: 'auto' } as const, {
+  isOn: false,
+  cap: DEFAULT_CAP,
+})
+
+const PING_PROMPT =
+  'Prompt-cache keep-alive from the cache-refresher plugin. Reply with exactly: ok'
+
+const OBSERVATIONS = 'observations'
+const MAX_OBSERVATIONS = 100
+const EXTENDS = 'pingExtends'
+const LANG = 'lang'
+
+type TtlChoice = Pick<Snapshot, 'ttl' | 'ttlSource'>
+
+type PingResult = { text: string; verdict: Verdict | null }
+
+// What the environment and settings pin the TTL to; undefined until first read.
+let configured: TtlChoice | null | undefined
+// The store's record of whether pings extend the cache; undefined until first read.
+let extension: Extension | undefined
+// The store's log of touches; undefined until first read.
+let observed: Observation[] | undefined
+// The language in force and what decided it; undefined until first read.
+let spoken: { lang: Lang; source: LangSource } | undefined
+let isPinging = false
+// Main-thread requests under way: each touched the cache as it started.
+let inFlight = 0
+// What the panel's last button press came to, shown under its buttons.
+let lastAction = ''
+// The band's words as last drawn: the countdown redraws only when they change.
+let lastHead = ''
+// The language the open panel's title was last written in.
+let titledIn: Lang | undefined
+// When the panel was last opened: its entrance plays from that moment.
+let openedAt: number | undefined
+// The touch that last refilled the cache, and the share of its lifetime left before it: the ring sweeps back from there.
+let refill: { at: number; from: number } | undefined
+
+function isOn(value: string | undefined): boolean {
+  return value === '1' || value === 'true'
+}
+
+/** The language the conversation is in, from what Claude and the person last wrote; null with too little to go on. */
+async function spokenLang($: EngineInterface): Promise<Lang | null> {
+  try {
+    const rows = await $.session.messages()
+    let cjk = 0
+    let latin = 0
+    for (const row of rows.slice(-200)) {
+      for (const char of row.text.slice(0, 600)) {
+        const code = char.codePointAt(0) ?? 0
+        if (code >= 0x4e00 && code <= 0x9fff) cjk += 1
+        else if ((code >= 0x41 && code <= 0x5a) || (code >= 0x61 && code <= 0x7a)) latin += 1
+      }
+    }
+    if (cjk + latin < 40) return null
+
+    // Chinese text about code carries file names and commands in Latin letters, so a modest share already says Chinese.
+    return cjk >= 20 && cjk / (cjk + latin) > 0.15 ? 'zh' : 'en'
+  } catch {
+    return null
+  }
+}
+
+// The person's own choice, then Claude Code's language setting, then the language of the conversation, then the locale.
+async function speaking($: EngineInterface): Promise<{ lang: Lang; source: LangSource }> {
+  if (spoken === undefined) {
+    const pinned = langFrom(await $.store.get(LANG))
+    const settings: Record<string, unknown> = pinned === null ? await $.settings.read() : {}
+    const fromSetting = langFrom(settings.language)
+    const fromTalk = pinned === null && fromSetting === null ? await spokenLang($) : null
+    const fromLocale =
+      pinned === null && fromSetting === null && fromTalk === null
+        ? (langFrom(await $.env.get('LC_ALL')) ?? langFrom(await $.env.get('LANG')))
+        : null
+    spoken =
+      pinned !== null
+        ? { lang: pinned, source: 'pinned' }
+        : fromSetting !== null
+          ? { lang: fromSetting, source: 'setting' }
+          : fromTalk !== null
+            ? { lang: fromTalk, source: 'conversation' }
+            : fromLocale !== null
+              ? { lang: fromLocale, source: 'locale' }
+              : { lang: 'en', source: 'default' }
+  }
+
+  return spoken
+}
+
+async function langOf($: EngineInterface): Promise<Lang> {
+  return (await speaking($)).lang
+}
+
+/** Pins a language, or with `auto` goes back to detecting it; false for a word that names neither. */
+async function setLang($: EngineInterface, word: string): Promise<boolean> {
+  if (word === 'auto') {
+    await $.store.delete(LANG)
+    spoken = undefined
+  } else if (word === 'en' || word === 'zh') {
+    await $.store.set(LANG, word)
+    spoken = { lang: word, source: 'pinned' }
+  } else {
+    return false
+  }
+  // The band's words change with the language even while the clock stands still.
+  lastHead = ''
+  $.ui.invalidate('ui.render')
+
+  return true
+}
+
+// Follows Claude Code's own precedence for the main conversation's TTL.
+async function configuredTtl($: EngineInterface): Promise<TtlChoice | null> {
+  if (isOn(await $.env.get('FORCE_PROMPT_CACHING_5M'))) {
+    return { ttl: '5m', ttlSource: 'env' }
+  }
+  const fromEnv = await $.env.get('CLAUDE_CODE_PROMPT_CACHE_TTL')
+  if (fromEnv === '5m' || fromEnv === '1h') return { ttl: fromEnv, ttlSource: 'env' }
+  const settings: Record<string, unknown> = await $.settings.read()
+  const fromSetting = settings.promptCacheTtl
+  if (fromSetting === '5m' || fromSetting === '1h') {
+    return { ttl: fromSetting, ttlSource: 'setting' }
+  }
+  if (isOn(await $.env.get('ENABLE_PROMPT_CACHING_1H'))) {
+    return { ttl: '1h', ttlSource: 'env' }
+  }
+
+  return null
+}
+
+async function resolveTtl($: EngineInterface, previous: Snapshot | null): Promise<TtlChoice> {
+  if (configured === undefined) configured = await configuredTtl($)
+  if (configured !== null) return configured
+  if (previous?.ttlSource === 'observed') return { ttl: previous.ttl, ttlSource: 'observed' }
+  const { rateLimits } = await $.session.usage()
+  const plan = rateLimits.filter(one => one.kind === 'five_hour' || one.kind === 'seven_day')
+  // A subscription inside its plan's usage gets the hour; over it, or off a subscription, five minutes.
+  const isWithinPlan = plan.length > 0 && plan.every(one => one.percentUsed < 100)
+
+  return { ttl: isWithinPlan ? '1h' : '5m', ttlSource: 'assumed' }
+}
+
+async function observations($: EngineInterface): Promise<Observation[]> {
+  if (observed === undefined) {
+    const held = await $.store.get(OBSERVATIONS)
+    observed = Array.isArray(held) ? held : []
+  }
+
+  return observed
+}
+
+async function remember($: EngineInterface, observation: Observation): Promise<void> {
+  observed = [...(await observations($)), observation].slice(-MAX_OBSERVATIONS)
+  await $.store.set(OBSERVATIONS, observed)
+}
+
+async function knownExtension($: EngineInterface): Promise<Extension> {
+  if (extension === undefined) {
+    const held = await $.store.get(EXTENDS)
+    extension = typeof held === 'object' && held !== null ? (held as Extension) : {}
+  }
+
+  return extension
+}
+
+async function learnExtension($: EngineInterface, ttl: Ttl, doesExtend: boolean): Promise<void> {
+  extension = { ...(await knownExtension($)), [ttl]: doesExtend }
+  await $.store.set(EXTENDS, extension)
+}
+
+async function viewOf($: EngineInterface): Promise<View> {
+  return {
+    held: await read($, snap),
+    now: await $.clock.now(),
+    policy: await read($, auto),
+    known: await knownExtension($),
+    observations: await observations($),
+  }
+}
+
+/** What the drawings should be moving at this moment. */
+async function motionOf($: EngineInterface): Promise<Motion> {
+  const now = await $.clock.now()
+  const sinceOpen = openedAt === undefined ? null : now - openedAt
+  const sinceRefill = refill === undefined ? null : now - refill.at
+
+  return {
+    now,
+    sinceOpen: sinceOpen !== null && sinceOpen < ENTER_MS ? sinceOpen : null,
+    refill: refill !== undefined && sinceRefill !== null && sinceRefill < REFILL_MS ? { since: sinceRefill, from: refill.from } : null,
+    isPinging,
+  }
+}
+
+/** Opens the panel, noting when. */
+async function openPane($: EngineInterface, title: string): Promise<void> {
+  openedAt = await $.clock.now()
+  await $.ui.open({ id: PANE, title, focus: true, closeOnEscape: true })
+}
+
+/** The share of its lifetime a cache had left at a moment, for the ring to sweep back from. */
+function shareLeft(held: Snapshot | null, at: number): number {
+  return isTracked(held) ? Math.max(0, remainingOf(held, at)) / TTL_MS[held.ttl] : 0
+}
+
+/** Takes one main-thread response's usage as the cache's new state. */
+async function recordStep(
+  $: EngineInterface,
+  startedAt: number,
+  index: number,
+  usage: ModelUsage & { model: string },
+): Promise<void> {
+  const previous = await read($, snap)
+  const served = usage.cache_read_input_tokens
+  let { ttl, ttlSource } = await resolveTtl($, previous)
+
+  if (isTracked(previous) && previous.coldReason === null && previous.model === usage.model) {
+    const gapMs = startedAt - previous.touchedAt
+    const verdict = verdictOf(served, previous.cachedTokens)
+    const evidence = extensionEvidence(previous, startedAt, verdict)
+    if (evidence !== undefined) await learnExtension($, previous.ttl, evidence)
+    // After a ping a miss may be the ping's doing, so only a turn's own gap speaks for the TTL.
+    const canInfer = ttlSource === 'assumed' || ttlSource === 'observed'
+    if (canInfer && verdict === 'hit' && gapMs > TTL_MS['5m'] + 30_000) {
+      ttl = '1h'
+      ttlSource = 'observed'
+    } else if (
+      canInfer &&
+      previous.touchedBy !== 'ping' &&
+      verdict === 'miss' &&
+      gapMs > TTL_MS['5m'] &&
+      gapMs < TTL_MS['1h']
+    ) {
+      ttl = '5m'
+      ttlSource = 'observed'
+    }
+    if (index === 0 || verdict !== 'hit') {
+      await remember($, {
+        at: startedAt,
+        kind: 'turn',
+        gapMs,
+        prevBy: previous.touchedBy,
+        ttl: previous.ttl,
+        cachedBefore: previous.cachedTokens,
+        read: served,
+        created: usage.cache_creation_input_tokens,
+        input: usage.input_tokens,
+        output: usage.output_tokens,
+        model: usage.model,
+        verdict,
+      })
+    }
+  }
+
+  await update($, snap, () => ({
+    touchedAt: startedAt,
+    touchedBy: 'turn' as const,
+    turnAt: startedAt,
+    pingsSinceTurn: 0,
+    cachedTokens: served + usage.cache_creation_input_tokens,
+    model: usage.model,
+    ttl,
+    ttlSource,
+    coldReason: null,
+    lastPing: previous?.lastPing ?? null,
+  }))
+  refill = { at: await $.clock.now(), from: shareLeft(previous, startedAt) }
+  $.ui.invalidate('ui.render')
+}
+
+/** Sends one keep-alive over the main conversation's prefix and says what it did. */
+async function ping($: EngineInterface, isForced: boolean): Promise<PingResult> {
+  const m = MESSAGES[await langOf($)]
+  const held = await read($, snap)
+  if (!isTracked(held)) return { text: m.pingNothing, verdict: null }
+  if (isPinging) return { text: m.pingBusy, verdict: null }
+  const startedAt = await $.clock.now()
+  if (remainingOf(held, startedAt) <= PING_MARGIN_MS && !isForced) {
+    return { text: m.pingCold(coldWords(m, held, startedAt), fmtTokens(held.cachedTokens)), verdict: null }
+  }
+
+  isPinging = true
+  // The ring shows the ping going out, and again what came of it.
+  $.ui.invalidate('ui.render')
+  try {
+    const reply = await $.model.fork({ prompt: PING_PROMPT })
+    if (!reply.isAnswered && reply.reason === 'nothing-to-fork') return { text: m.pingNoFork, verdict: null }
+    if (!reply.isAnswered && reply.reason === 'api-error') {
+      return { text: m.pingApiError(reply.error, reply.status), verdict: null }
+    }
+
+    const { usage } = reply
+    const lastPing = {
+      at: startedAt,
+      read: usage.cache_read_input_tokens,
+      created: usage.cache_creation_input_tokens,
+      input: usage.input_tokens,
+      output: usage.output_tokens,
+    }
+    if (lastPing.read + lastPing.created + lastPing.input === 0) return { text: m.pingCut, verdict: null }
+    const verdict = verdictOf(lastPing.read, held.cachedTokens)
+    const hasRewritten = verdict !== 'hit' && lastPing.created >= held.cachedTokens * HIT
+    const evidence = extensionEvidence(held, startedAt, verdict)
+    if (evidence !== undefined) await learnExtension($, held.ttl, evidence)
+    await remember($, {
+      at: startedAt,
+      kind: 'ping',
+      gapMs: startedAt - held.touchedAt,
+      prevBy: held.touchedBy,
+      ttl: held.ttl,
+      cachedBefore: held.cachedTokens,
+      read: lastPing.read,
+      created: lastPing.created,
+      input: lastPing.input,
+      output: lastPing.output,
+      model: held.model,
+      verdict,
+    })
+    await update($, snap, now => {
+      if (now === null) return now
+      const pingsSinceTurn = now.pingsSinceTurn + 1
+      if (verdict === 'hit' || hasRewritten) {
+        return { ...now, touchedAt: startedAt, touchedBy: 'ping' as const, pingsSinceTurn, coldReason: null, lastPing }
+      }
+
+      return { ...now, pingsSinceTurn, coldReason: COLD_PING, lastPing }
+    })
+    if (verdict === 'hit' || hasRewritten) refill = { at: await $.clock.now(), from: shareLeft(held, startedAt) }
+
+    const counts = m.counts({
+      read: fmtTokens(lastPing.read),
+      wrote: fmtTokens(lastPing.created),
+      input: lastPing.input,
+      output: lastPing.output,
+    })
+    const price = priceOf(held.model)
+    const cost = price
+      ? m.atListPrice(
+          fmtUsd(
+            (lastPing.read * price.read * price.input +
+              lastPing.created * WRITE_MULTIPLIER[held.ttl] * price.input +
+              lastPing.input * price.input +
+              lastPing.output * price.output) /
+              1e6,
+          ),
+        )
+      : ''
+    if (verdict === 'hit') return { text: m.pingHit(counts, cost, held.ttl), verdict }
+
+    return { text: hasRewritten ? m.pingRewrote(counts, cost) : m.pingMissed(counts, cost), verdict }
+  } finally {
+    isPinging = false
+    $.ui.invalidate('ui.render')
+  }
+}
+
+export const register: Register = on => {
+  on('session.start', async ($, e, next) => {
+    $.clock.every(1000, async () => {
+      const lang = await langOf($)
+      const m = MESSAGES[lang]
+      // An open panel keeps the title it was opened with, so it is renamed when the language moves on.
+      if (lang !== titledIn) {
+        titledIn = lang
+        const panes = await $.ui.panes()
+        if (panes.some(pane => pane.id === PANE && pane.title !== m.paneTitle)) {
+          await $.ui.open({ id: PANE, title: m.paneTitle })
+        }
+      }
+      const held = await read($, snap)
+      const now = await $.clock.now()
+      // The countdown: redraw only when its words change.
+      const head = held === null ? '' : remainingOf(held, now) > 0 ? fmtRemaining(remainingOf(held, now)) : 'cold'
+      if (head !== lastHead) {
+        lastHead = head
+        $.ui.invalidate('ui.render')
+      }
+
+      // The keep-alive. A request under way has already touched the cache.
+      if (held === null || isPinging || inFlight > 0) return
+      const policy = await read($, auto)
+      if (!policy.isOn) return
+      const remaining = remainingOf(held, now)
+      if (remaining <= PING_MARGIN_MS || remaining > LEAD_MS[held.ttl]) return
+      const budget = budgetOf(held, policy.cap, await knownExtension($))
+      if (held.pingsSinceTurn >= budget) return
+      const sent = await ping($, false)
+      $.ui.log(m.autoLog(held.pingsSinceTurn + 1, budget, sent.text))
+      if (sent.verdict !== 'hit') $.ui.toast(m.autoMissToast)
+    })
+    const m = MESSAGES[await langOf($)]
+    await $.command.register({ name: 'cache-status', description: m.cmdStatus, immediate: true })
+    await $.command.register({ name: 'cache-panel', description: m.cmdPanel, immediate: true })
+    await $.command.register({ name: 'cache-ping', description: m.cmdPing, argumentHint: '[force]' })
+    await $.command.register({
+      name: 'cache-auto',
+      description: m.cmdAuto,
+      argumentHint: m.cmdAutoHint,
+      immediate: true,
+    })
+    await $.command.register({
+      name: 'cache-lang',
+      description: m.cmdLang,
+      argumentHint: '[auto|en|zh]',
+      immediate: true,
+    })
+
+    return next(e)
+  })
+
+  on('turn.step', async function* ($, e, next) {
+    // Subagents keep caches of their own; only the main conversation is tracked.
+    const isMain = e.agentId === undefined
+    const startedAt = await $.clock.now()
+    if (isMain) inFlight += 1
+    try {
+      const result = yield* next(e)
+      if (isMain && !isPinging && result.usage !== null) {
+        if (e.index === 0 && spoken?.source !== 'pinned') spoken = undefined
+        await recordStep($, startedAt, e.index, result.usage)
+      }
+
+      return result
+    } finally {
+      if (isMain) inFlight -= 1
+    }
+  })
+
+  on('classic.SessionStart', async ($, e, next) => {
+    if (e.source === 'compact') {
+      // The compacted conversation shares no prefix with what was cached.
+      await update($, snap, () => null)
+    } else if (
+      (e.source === 'resume' || e.source === 'fork') &&
+      e.seconds_since_last_response !== undefined &&
+      e.context_tokens !== undefined
+    ) {
+      const now = await $.clock.now()
+      const choice = await resolveTtl($, null)
+      const touchedAt = now - e.seconds_since_last_response * 1000
+      const cachedTokens = e.context_tokens
+      const model = e.model ?? 'unknown'
+      await update($, snap, () => ({
+        touchedAt,
+        touchedBy: 'resume' as const,
+        turnAt: touchedAt,
+        pingsSinceTurn: 0,
+        cachedTokens,
+        model,
+        ...choice,
+        coldReason: null,
+        lastPing: null,
+      }))
+    }
+
+    return next(e)
+  })
+
+  on('classic.PostModelSwitch', async ($, e, next) => {
+    if (e.from_model !== e.to_model) {
+      const reason = COLD_MODEL + e.to_model
+      await update($, snap, now => (now === null ? now : { ...now, coldReason: reason }))
+    }
+
+    return next(e)
+  })
+
+  on('command.run', { command: 'cache-status' }, async $ => {
+    return { text: report(MESSAGES[await langOf($)], await viewOf($)) }
+  })
+
+  on('command.run', { command: 'cache-panel' }, async $ => {
+    await openPane($, MESSAGES[await langOf($)].paneTitle)
+
+    return {}
+  })
+
+  on('command.run', { command: 'cache-ping' }, async ($, e) => {
+    return { text: (await ping($, e.args.trim() === 'force')).text }
+  })
+
+  on('command.run', { command: 'cache-auto' }, async ($, e) => {
+    const m = MESSAGES[await langOf($)]
+    const words = e.args.trim().split(/\s+/).filter(Boolean)
+    const wanted = words.find(word => word === 'on' || word === 'off')
+    const cap = words.map(Number).find(n => Number.isInteger(n) && n > 0 && n <= MAX_CAP)
+    if (words.length > 0 && wanted === undefined && cap === undefined) return { text: m.autoUsage(MAX_CAP) }
+    if (words.length > 0) {
+      await update($, auto, now => ({
+        isOn: wanted === undefined ? true : wanted === 'on',
+        cap: cap ?? now.cap,
+      }))
+    }
+
+    return { text: [m.autoHeader, ...autoLines(m, await viewOf($)), m.autoNote].join('\n') }
+  })
+
+  on('command.run', { command: 'cache-lang' }, async ($, e) => {
+    const word = e.args.trim().toLowerCase()
+    if (word !== '' && !(await setLang($, word))) return { text: MESSAGES[await langOf($)].langUsage }
+    const now = await speaking($)
+    const m = MESSAGES[now.lang]
+
+    return { text: m.langNow(m.name, now.source) }
+  })
+
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    const view = await viewOf($)
+    const { held } = view
+    if (e.props.hasSurvey || !isTracked(held)) return next(e)
+    const m = MESSAGES[await langOf($)]
+    const beneath = await next(e)
+    const els = $.ui.resolve(e)
+    const band = bandView(els, e.surface, m, { ...view, held }, await motionOf($), () => {
+      void openPane($, m.paneTitle)
+    })
+
+    return els.Box({ flexDirection: 'column', children: [beneath, band] })
+  })
+
+  on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
+    return paneView($.ui.resolve(e), e.surface, MESSAGES[await langOf($)], await viewOf($), lastAction, {
+      onToggle: () => {
+        void update($, auto, held => ({ ...held, isOn: !held.isOn }))
+      },
+      onCapDown: () => {
+        void update($, auto, held => ({ ...held, cap: Math.max(1, held.cap - 1) }))
+      },
+      onCapUp: () => {
+        void update($, auto, held => ({ ...held, cap: Math.min(MAX_CAP, held.cap + 1) }))
+      },
+      onPing: async () => {
+        lastAction = (await ping($, false)).text
+        $.ui.invalidate('ui.render')
+      },
+    }, e.props.bodyColumns, await motionOf($))
+  })
+}

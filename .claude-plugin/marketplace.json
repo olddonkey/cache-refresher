@@ -1,0 +1,14 @@
+{
+  "name": "olddonkey",
+  "description": "Claude Code plugins by olddonkey",
+  "owner": {
+    "name": "olddonkey"
+  },
+  "plugins": [
+    {
+      "name": "cache-refresher",
+      "source": "./",
+      "description": "Shows when the prompt cache expires and what a lapse would cost, and can keep it warm with keep-alive pings while you are away"
+    }
+  ]
+}
