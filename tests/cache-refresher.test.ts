@@ -42,7 +42,6 @@ test('a response starts the countdown and the cache goes cold at the TTL', async
   const clock = mock.clock(on, { now: START })
   mock.store(on)
   mock.env(on, {})
-  on('settings.read', () => ({ value: {} }))
   on('session.usage', () => ({ value: { startedAt: START, context: { window: 1_000_000 }, rateLimits: [] } }))
   on('turn.step', async function* (_, e) {
     return { turnId: e.turnId, index: e.index, answer: 'hi', toolUses: [], stopReason: 'end_turn', usage: usage(0, 80_000) }
@@ -67,7 +66,6 @@ test('a subscription inside its plan is assumed to cache for the hour', async ($
   const clock = mock.clock(on, { now: START })
   mock.store(on)
   mock.env(on, {})
-  on('settings.read', () => ({ value: {} }))
   on('session.usage', () => ({
     value: {
       startedAt: START,
@@ -93,7 +91,6 @@ test('a ping is refused once the cache is cold and restarts the countdown while 
   const clock = mock.clock(on, { now: START })
   mock.store(on)
   mock.env(on, { CLAUDE_CODE_PROMPT_CACHE_TTL: '5m' })
-  on('settings.read', () => ({ value: {} }))
   let forks = 0
   on('model.fork', () => {
     forks += 1
@@ -128,7 +125,6 @@ test('the band draws the countdown on the terminal and the desktop', async ($, o
   const clock = mock.clock(on, { now: START })
   mock.store(on)
   mock.env(on, { CLAUDE_CODE_PROMPT_CACHE_TTL: '1h' })
-  on('settings.read', () => ({ value: {} }))
   on('turn.step', async function* (_, e) {
     return { turnId: e.turnId, index: e.index, answer: 'hi', toolUses: [], stopReason: 'end_turn', usage: usage(150_000, 30_000, 'claude-fable-5-1') }
   })
@@ -185,7 +181,6 @@ test('auto keep-alive stays off until it is turned on', { timeoutMs: 30_000 }, a
   const clock = mock.clock(on, { now: START })
   mock.store(on)
   mock.env(on, HOUR_ENV)
-  on('settings.read', () => ({ value: {} }))
   let forks = 0
   on('model.fork', () => {
     forks += 1
@@ -211,7 +206,6 @@ test('auto sends one ping per idle stretch until a ping is proven to extend the 
   const clock = mock.clock(on, { now: START })
   mock.store(on)
   mock.env(on, HOUR_ENV)
-  on('settings.read', () => ({ value: {} }))
   let forks = 0
   on('model.fork', () => {
     forks += 1
@@ -244,7 +238,6 @@ test('a hit past the turn\'s own lifetime proves pings and unlocks the chain up 
   const clock = mock.clock(on, { now: START })
   mock.store(on)
   mock.env(on, HOUR_ENV)
-  on('settings.read', () => ({ value: {} }))
   let forks = 0
   on('model.fork', () => {
     forks += 1
@@ -284,7 +277,6 @@ test('the mod speaks Chinese when the person pins it, in the report and the band
   const clock = mock.clock(on, { now: START })
   mock.store(on, { lang: 'zh' })
   mock.env(on, HOUR_ENV)
-  on('settings.read', () => ({ value: {} }))
   on('turn.step', async function* (_, e) {
     return { turnId: e.turnId, index: e.index, answer: 'hi', toolUses: [], stopReason: 'end_turn', usage: usage(150_000, 30_000, 'claude-fable-5-1') }
   })
@@ -311,7 +303,6 @@ test('the language follows the locale until /cache-lang pins another', async ($,
   mock.clock(on, { now: START })
   mock.store(on)
   mock.env(on, { LANG: 'zh_CN.UTF-8' })
-  on('settings.read', () => ({ value: {} }))
   on('ui.invalidate', () => ({ value: undefined }))
 
   const detected = await $.command.run({ command: 'cache-lang', args: '' })
@@ -328,7 +319,6 @@ test('the panel draws the dial, sets a lapse against a ping, and its buttons dri
   const clock = mock.clock(on, { now: START })
   mock.store(on)
   mock.env(on, HOUR_ENV)
-  on('settings.read', () => ({ value: {} }))
   on('ui.invalidate', () => ({ value: undefined }))
   on('model.fork', () => ({
     value: { isAnswered: true, text: 'ok', usage: { input_tokens: 40, output_tokens: 200, cache_read_input_tokens: 180_000, cache_creation_input_tokens: 0 } },
@@ -403,38 +393,65 @@ test('the panel draws the dial, sets a lapse against a ping, and its buttons dri
   expect((await desk.find({ key: 'cap-down' }))?.props.variant).toBe('secondary')
 })
 
-test('with nothing pinned, the mod follows the language Claude and the person are using', async ($, on) => {
+test('with nothing pinned, the mod follows the language Claude replies in', async ($, on) => {
   mock.clock(on, { now: START })
   mock.store(on)
-  mock.env(on, { LANG: 'en_US.UTF-8' })
-  on('settings.read', () => ({ value: {} }))
+  mock.env(on, { ...HOUR_ENV, LANG: 'en_US.UTF-8' })
   on('ui.invalidate', () => ({ value: undefined }))
-  let rows = [
-    { role: 'user' as const, text: '来', toolUses: [] },
-    { role: 'assistant' as const, text: '新版本已经在跑了：它刚刚记录了你这条消息触发的请求，说明重载后的代码在正常工作。界面我这边看不到，需要你看 register.tsx 和 views.ts 的效果。', toolUses: [] },
-  ]
-  on('session.messages', () => ({ value: rows }))
+  let answer = ''
+  on('turn.step', async function* (_, e) {
+    return { turnId: e.turnId, index: e.index, answer, toolUses: [], stopReason: 'end_turn', usage: usage(150_000, 30_000, 'claude-fable-5-1') }
+  })
+  let turns = 0
+  const reply = async (text: string) => {
+    answer = text
+    turns += 1
+    const step = $.turn.step({ turnId: `t${turns}`, index: 0, model: 'claude-fable-5-1', messageCount: turns })
+    for await (const _ of step) void _
+    await step.result
+  }
+  const lang = async () => (await $.command.run({ command: 'cache-lang', args: '' })).text
 
-  // A one-word prompt is too little on its own; Claude's own replies carry the language.
-  const zh = await $.command.run({ command: 'cache-lang', args: '' })
-  expect(zh.text).toBe('显示语言：中文（跟随对话语言）。')
-  expect((await $.command.run({ command: 'cache-status', args: '' })).text).toContain('提示缓存：尚无数据')
+  // Before Claude has said anything there is only the locale to go on.
+  expect(await lang()).toBe('Language: English (from the system locale).')
 
-  // An English conversation is followed the same way, and a pin outranks either.
-  rows = [
-    { role: 'user' as const, text: 'why does the countdown reset after every message?', toolUses: [] },
-    { role: 'assistant' as const, text: 'Each request that hits the cache restarts its lifetime, so the countdown starts over.', toolUses: [] },
-  ]
-  await $.command.run({ command: 'cache-lang', args: 'auto' })
-  expect((await $.command.run({ command: 'cache-lang', args: '' })).text).toBe('Language: English (following the conversation).')
+  // One reply in Chinese is enough, file names and all.
+  await reply('新版本已经在跑了：它刚刚记录了你这条消息触发的请求，说明重载后的代码在正常工作。界面我这边看不到，需要你看 register.tsx 和 views.ts 的效果。')
+  expect(await lang()).toBe('显示语言：中文（跟随对话语言）。')
+  expect((await $.command.run({ command: 'cache-status', args: '' })).text).toContain('提示缓存：有效')
+
+  // Code says nothing about the language, and neither does a reply of a few words.
+  await reply('```ts\nconst remaining = held.touchedAt + TTL_MS[held.ttl] - now\nif (remaining <= PING_MARGIN_MS) return refuse(held)\n```\n好了。')
+  await reply('ok')
+  expect(await lang()).toBe('显示语言：中文（跟随对话语言）。')
+
+  // One reply in English does not turn a Chinese conversation; a second one does.
+  const english = 'Each request that hits the cache restarts its lifetime, so the countdown starts over after every message you send.'
+  await reply(english)
+  expect(await lang()).toBe('显示语言：中文（跟随对话语言）。')
+  await reply(english)
+  expect(await lang()).toBe('Language: English (following the conversation).')
+
+  // A pin outranks what is heard, and going back to auto picks up where the conversation is.
   expect((await $.command.run({ command: 'cache-lang', args: 'zh' })).text).toBe('显示语言：中文（已固定）。')
+  await reply(english)
+  expect(await lang()).toBe('显示语言：中文（已固定）。')
+  expect((await $.command.run({ command: 'cache-lang', args: 'auto' })).text).toBe('Language: English (following the conversation).')
+})
+
+test('a new session starts in the language the last one was following', async ($, on) => {
+  mock.clock(on, { now: START })
+  mock.store(on, { langHeard: 'zh' })
+  mock.env(on, { LANG: 'en_US.UTF-8' })
+  on('ui.invalidate', () => ({ value: undefined }))
+
+  expect((await $.command.run({ command: 'cache-lang', args: '' })).text).toBe('显示语言：中文（跟随对话语言）。')
 })
 
 test('the drawings move when the cache\'s state does and are still otherwise', async ($, on) => {
   const clock = mock.clock(on, { now: START })
   mock.store(on)
   mock.env(on, HOUR_ENV)
-  on('settings.read', () => ({ value: {} }))
   on('ui.invalidate', () => ({ value: undefined }))
   on('ui.open', () => ({ value: undefined }))
   let answer: (() => void) | undefined

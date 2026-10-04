@@ -2,8 +2,8 @@ import type { Snapshot, Ttl } from '../types'
 
 export type Lang = 'en' | 'zh'
 
-/** What decided the language: the person's pin, Claude Code's setting, the conversation, the locale, or nothing yet. */
-export type LangSource = 'pinned' | 'setting' | 'conversation' | 'locale' | 'default'
+/** What decided the language: the person's pin, the language Claude replies in, the locale, or nothing yet. */
+export type LangSource = 'pinned' | 'conversation' | 'locale' | 'default'
 
 type Verdict = 'hit' | 'partial' | 'miss'
 type Counts = { read: string; wrote: string; input: number; output: number }
@@ -120,7 +120,7 @@ const en = {
   priceNote: (cap: string) => `at most ${cap} · amounts at API list price`,
 
   langNow: (name: string, source: LangSource) =>
-    `Language: ${name} (${{ pinned: 'pinned', setting: "from Claude Code's language setting", conversation: 'following the conversation', locale: 'from the system locale', default: 'default, nothing to go on yet' }[source]}).`,
+    `Language: ${name} (${{ pinned: 'pinned', conversation: 'following the conversation', locale: 'from the system locale', default: 'default, nothing to go on yet' }[source]}).`,
   langUsage: 'Usage: /cache-lang [auto|en|zh]',
 }
 
@@ -128,7 +128,6 @@ export type Messages = typeof en
 
 const SOURCE_ZH: Record<Snapshot['ttlSource'], string> = {
   env: '环境变量',
-  setting: '设置',
   observed: '实测',
   assumed: '推断',
 }
@@ -229,7 +228,7 @@ const zh: Messages = {
   priceNote: cap => `最多花费 ${cap} · 金额按 API 标价折算`,
 
   langNow: (name, source) =>
-    `显示语言：${name}（${{ pinned: '已固定', setting: '来自 Claude Code 的 language 设置', conversation: '跟随对话语言', locale: '来自系统语言环境', default: '默认，暂时无从判断' }[source]}）。`,
+    `显示语言：${name}（${{ pinned: '已固定', conversation: '跟随对话语言', locale: '来自系统语言环境', default: '默认，暂时无从判断' }[source]}）。`,
   langUsage: '用法：/cache-lang [auto|en|zh]',
 }
 

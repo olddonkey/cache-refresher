@@ -23,8 +23,8 @@ export type Snapshot = {
   /** The model id the API reported; caches are per model. */
   model: string
   ttl: Ttl
-  /** Where `ttl` came from: configuration, an observed hit or miss, or the default for the billing mode. */
-  ttlSource: 'env' | 'setting' | 'observed' | 'assumed'
+  /** Where `ttl` came from: the environment, an observed hit or miss, or the default for the billing mode. */
+  ttlSource: 'env' | 'observed' | 'assumed'
   /** Why the cache is unusable whatever the clock says, or null. */
   coldReason: string | null
   lastPing: PingUsage | null

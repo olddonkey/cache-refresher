@@ -40,12 +40,15 @@ const OBSERVATIONS = 'observations'
 const MAX_OBSERVATIONS = 100
 const EXTENDS = 'pingExtends'
 const LANG = 'lang'
+const HEARD = 'langHeard'
+// A reply's weight in the language tally halves with each reply after it.
+const HEARD_DECAY = 0.5
 
 type TtlChoice = Pick<Snapshot, 'ttl' | 'ttlSource'>
 
 type PingResult = { text: string; verdict: Verdict | null }
 
-// What the environment and settings pin the TTL to; undefined until first read.
+// What the environment pins the TTL to; undefined until first read.
 let configured: TtlChoice | null | undefined
 // The store's record of whether pings extend the cache; undefined until first read.
 let extension: Extension | undefined
@@ -53,6 +56,9 @@ let extension: Extension | undefined
 let observed: Observation[] | undefined
 // The language in force and what decided it; undefined until first read.
 let spoken: { lang: Lang; source: LangSource } | undefined
+// Letters of each kind in Claude's recent replies, and the language they last said.
+let heard = { cjk: 0, latin: 0 }
+let heardLang: Lang | undefined
 let isPinging = false
 // Main-thread requests under way: each touched the cache as it started.
 let inFlight = 0
@@ -71,52 +77,55 @@ function isOn(value: string | undefined): boolean {
   return value === '1' || value === 'true'
 }
 
-/** The language the conversation is in, from what Claude and the person last wrote; null with too little to go on. */
-async function spokenLang($: EngineInterface): Promise<Lang | null> {
-  try {
-    const rows = await $.session.messages()
-    let cjk = 0
-    let latin = 0
-    for (const row of rows.slice(-200)) {
-      for (const char of row.text.slice(0, 600)) {
-        const code = char.codePointAt(0) ?? 0
-        if (code >= 0x4e00 && code <= 0x9fff) cjk += 1
-        else if ((code >= 0x41 && code <= 0x5a) || (code >= 0x61 && code <= 0x7a)) latin += 1
-      }
-    }
-    if (cjk + latin < 40) return null
-
-    // Chinese text about code carries file names and commands in Latin letters, so a modest share already says Chinese.
-    return cjk >= 20 && cjk / (cjk + latin) > 0.15 ? 'zh' : 'en'
-  } catch {
-    return null
-  }
-}
-
-// The person's own choice, then Claude Code's language setting, then the language of the conversation, then the locale.
+// The person's own choice, then the language Claude last replied in, then the locale.
 async function speaking($: EngineInterface): Promise<{ lang: Lang; source: LangSource }> {
   if (spoken === undefined) {
     const pinned = langFrom(await $.store.get(LANG))
-    const settings: Record<string, unknown> = pinned === null ? await $.settings.read() : {}
-    const fromSetting = langFrom(settings.language)
-    const fromTalk = pinned === null && fromSetting === null ? await spokenLang($) : null
+    const fromTalk = pinned === null ? langFrom(await $.store.get(HEARD)) : null
     const fromLocale =
-      pinned === null && fromSetting === null && fromTalk === null
+      pinned === null && fromTalk === null
         ? (langFrom(await $.env.get('LC_ALL')) ?? langFrom(await $.env.get('LANG')))
         : null
     spoken =
       pinned !== null
         ? { lang: pinned, source: 'pinned' }
-        : fromSetting !== null
-          ? { lang: fromSetting, source: 'setting' }
-          : fromTalk !== null
-            ? { lang: fromTalk, source: 'conversation' }
-            : fromLocale !== null
-              ? { lang: fromLocale, source: 'locale' }
-              : { lang: 'en', source: 'default' }
+        : fromTalk !== null
+          ? { lang: fromTalk, source: 'conversation' }
+          : fromLocale !== null
+            ? { lang: fromLocale, source: 'locale' }
+            : { lang: 'en', source: 'default' }
   }
 
   return spoken
+}
+
+/**
+ * Follows the language of a reply as it passes: its letters are counted, and only the language they say is kept.
+ * Code says nothing about a language, and a reply with too few letters says too little.
+ */
+async function hear($: EngineInterface, answer: string): Promise<void> {
+  const prose = answer.replace(/```[\s\S]*?```/g, ' ').replace(/`[^`\n]*`/g, ' ')
+  let cjk = 0
+  let latin = 0
+  for (const char of prose.slice(0, 600)) {
+    const code = char.codePointAt(0) ?? 0
+    if (code >= 0x4e00 && code <= 0x9fff) cjk += 1
+    else if ((code >= 0x41 && code <= 0x5a) || (code >= 0x61 && code <= 0x7a)) latin += 1
+  }
+  if (cjk + latin < 40) return
+  heard = { cjk: heard.cjk * HEARD_DECAY + cjk, latin: heard.latin * HEARD_DECAY + latin }
+  // Chinese text about code carries file names and commands in Latin letters, so a modest share already says Chinese.
+  const lang: Lang = heard.cjk >= 20 && heard.cjk / (heard.cjk + heard.latin) > 0.15 ? 'zh' : 'en'
+  if (lang !== heardLang) {
+    heardLang = lang
+    await $.store.set(HEARD, lang)
+  }
+  const now = await speaking($)
+  if (now.source === 'pinned' || (now.source === 'conversation' && now.lang === lang)) return
+  spoken = { lang, source: 'conversation' }
+  // The band's words change with the language even while the clock stands still.
+  lastHead = ''
+  $.ui.invalidate('ui.render')
 }
 
 async function langOf($: EngineInterface): Promise<Lang> {
@@ -141,18 +150,13 @@ async function setLang($: EngineInterface, word: string): Promise<boolean> {
   return true
 }
 
-// Follows Claude Code's own precedence for the main conversation's TTL.
+// What the environment pins the main conversation's TTL to, in Claude Code's own order of precedence.
 async function configuredTtl($: EngineInterface): Promise<TtlChoice | null> {
   if (isOn(await $.env.get('FORCE_PROMPT_CACHING_5M'))) {
     return { ttl: '5m', ttlSource: 'env' }
   }
   const fromEnv = await $.env.get('CLAUDE_CODE_PROMPT_CACHE_TTL')
   if (fromEnv === '5m' || fromEnv === '1h') return { ttl: fromEnv, ttlSource: 'env' }
-  const settings: Record<string, unknown> = await $.settings.read()
-  const fromSetting = settings.promptCacheTtl
-  if (fromSetting === '5m' || fromSetting === '1h') {
-    return { ttl: fromSetting, ttlSource: 'setting' }
-  }
   if (isOn(await $.env.get('ENABLE_PROMPT_CACHING_1H'))) {
     return { ttl: '1h', ttlSource: 'env' }
   }
@@ -448,7 +452,7 @@ export const register: Register = on => {
     try {
       const result = yield* next(e)
       if (isMain && !isPinging && result.usage !== null) {
-        if (e.index === 0 && spoken?.source !== 'pinned') spoken = undefined
+        await hear($, result.answer)
         await recordStep($, startedAt, e.index, result.usage)
       }
 
