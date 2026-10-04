@@ -16,6 +16,8 @@ export function autoLines(m: Messages, view: View): string[] {
   const { held, policy, known, now } = view
   if (!policy.isOn) return [m.autoOff]
   if (!isTracked(held)) return [m.autoWaiting(policy.cap)]
+  const costs = costsOf(held)
+  if (costs !== null && costs.maxPings === 0) return [m.autoOnNone(policy.cap)]
   const budget = budgetOf(held, policy.cap, known)
 
   return [
@@ -40,9 +42,11 @@ export function report(m: Messages, view: View): string {
   } else {
     lines.push(
       m.reportLapse(fmtUsd(costs.lapseUsd), fmtUsd(costs.rewriteUsd)),
-      m.reportPing(fmtUsd(costs.pingUsd), held.lastPing !== null, costs.maxPings),
-      m.reportRule(held.ttl, (costs.hazardThreshold * 100).toFixed(1)),
+      costs.maxPings === 0
+        ? m.reportPingNone(fmtUsd(costs.pingUsd), held.lastPing !== null)
+        : m.reportPing(fmtUsd(costs.pingUsd), held.lastPing !== null, costs.maxPings),
     )
+    if (costs.maxPings > 0) lines.push(m.reportRule(held.ttl, (costs.hazardThreshold * 100).toFixed(1)))
   }
   if (held.lastPing) {
     lines.push(m.reportLastPing(fmtGap(now - held.lastPing.at), pingCounts(m, held.lastPing)))

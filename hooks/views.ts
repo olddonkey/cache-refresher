@@ -287,15 +287,16 @@ export function bandView(
   const tokens = fmtTokens(held.cachedTokens)
   const costs = costsOf(held)
   const rebuild = costs ? fmtUsd(costs.rewriteUsd) : ''
-  const head = remaining > 0 ? fmtRemaining(remaining) : m.bandCold
+  const head = remaining > 0 ? fmtRemaining(remaining) : held.coldReason === null ? m.bandCold : m.bandUnusable
   // With a keep-alive still to come the cache is not in danger, so nothing warns.
-  const isSaved = policy.isOn && held.pingsSinceTurn < budgetOf(held, policy.cap, known)
+  const budget = budgetOf(held, policy.cap, known)
+  const isSaved = policy.isOn && held.pingsSinceTurn < budget
   const isAlarming = isClosing(held, now) && !isSaved
   const detail =
     remaining <= 0
       ? m.bandColdDetail(tokens, rebuild)
-      : policy.isOn
-        ? m.bandAutoDetail(tokens, held.pingsSinceTurn, budgetOf(held, policy.cap, known))
+      : policy.isOn && budget > 0
+        ? m.bandAutoDetail(tokens, held.pingsSinceTurn, budget)
         : m.bandWarmDetail(tokens, rebuild)
   // The words stay the theme's own until something needs attention.
   const emphasis = remaining <= 0 ? { dimColor: true } : isAlarming ? { color: 'warning' } : {}
@@ -364,7 +365,7 @@ export function paneView(
     const tokens = fmtTokens(tracked.cachedTokens)
     const planned = policy.isOn && remaining > 0 ? left : 0
     const untilPing = remaining - LEAD_MS[tracked.ttl]
-    const figure = remaining > 0 ? fmtRemaining(remaining) : m.bandCold
+    const figure = remaining > 0 ? fmtRemaining(remaining) : tracked.coldReason === null ? m.bandCold : m.bandUnusable
     const caption =
       remaining <= 0
         ? m.heroCold(tokens, costs ? fmtUsd(costs.rewriteUsd) : '')
@@ -376,7 +377,11 @@ export function paneView(
     const share = costs && costs.rewriteUsd > 0 ? costs.pingUsd / costs.rewriteUsd : 1
     // The fuller sentence where it fits on the card's one line, the short one where it would not.
     const rule = costs ? m.breakEvenRule(costs.maxPings, (costs.hazardThreshold * 100).toFixed(1)) : ''
-    const note = costs ? (cells(rule) * 6 <= PANEL_PIXELS ? rule : m.breakEven(costs.maxPings)) : ''
+    const note = costs
+      ? costs.maxPings === 0
+        ? m.breakEvenNone
+        : cells(rule) * 6 <= PANEL_PIXELS ? rule : m.breakEven(costs.maxPings)
+      : ''
 
     if (Svg) {
       const card = cardSvg({
@@ -460,7 +465,7 @@ export function paneView(
             children: [
               compare(m.rowLapse, 1, false, fmtUsd(costs.rewriteUsd)),
               compare(m.rowPing, share, true, fmtUsd(costs.pingUsd)),
-              dim(m.breakEven(costs.maxPings)),
+              dim(costs.maxPings === 0 ? m.breakEvenNone : m.breakEven(costs.maxPings)),
             ],
           }),
         )
@@ -477,7 +482,7 @@ export function paneView(
   const plan = !tracked
     ? m.autoPlanOff(policy.cap, '')
     : left <= 0
-      ? m.autoSpent
+      ? costs !== null && costs.maxPings === 0 ? m.autoNotWorth : m.autoSpent
       : isTrial
         ? policy.isOn
           ? m.autoTrialOn(tracked.pingsSinceTurn, policy.cap)
