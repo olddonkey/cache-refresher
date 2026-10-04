@@ -13,11 +13,11 @@ const en = {
   name: 'English',
 
   bandCold: 'cold',
-  bandWarmDetail: (tokens: string, cost: string) =>
-    `${tokens} cached${cost && ` · ${cost} to rebuild if it lapses`}`,
-  bandAutoDetail: (tokens: string, used: number, budget: number) =>
-    `${tokens} cached · keeping warm ${used}/${budget}`,
-  bandColdDetail: (tokens: string, cost: string) => `next turn rebuilds ${tokens}${cost && ` for ≈${cost}`}`,
+  bandWarmDetail: (size: string, cost: string) =>
+    `${size} cached${cost && ` · ${cost} to rebuild if it lapses`}`,
+  bandAutoDetail: (size: string, used: number, budget: number) =>
+    `${size} cached · keeping warm ${used}/${budget}`,
+  bandColdDetail: (size: string, cost: string) => `next turn rebuilds ${size}${cost && ` for ≈${cost}`}`,
 
   cmdStatus: 'Show the prompt cache countdown and what a lapse would cost',
   cmdPing: 'Send one keep-alive that refreshes the prompt cache',
@@ -31,8 +31,8 @@ const en = {
 
   pingNothing: 'Nothing is cached for this conversation yet, so there is nothing to keep alive.',
   pingBusy: 'A ping is already on its way.',
-  pingCold: (why: string, tokens: string) =>
-    `Not sent: the cache is cold (${why}). A ping now would be billed on all ${tokens} tokens instead of refreshing them. Run /cache-ping force to send it anyway.`,
+  pingCold: (why: string, size: string) =>
+    `Not sent: the cache is cold (${why}). A ping now would be billed on all ${size} tokens instead of refreshing them. Run /cache-ping force to send it anyway.`,
   pingNoFork: 'Not sent: the main conversation has no response to fork from yet.',
   pingApiError: (error: string, status: number | null) =>
     `The ping failed with an API error (${error}, status ${status ?? 'none'}); the cache was left as it was.`,
@@ -51,8 +51,8 @@ const en = {
   reportWarm: (left: string) => `Prompt cache: warm, ${left} left.`,
   reportCold: (why: string) => `Prompt cache: cold (${why}).`,
   reportTtl: (ttl: Ttl, source: Snapshot['ttlSource']) => `  ttl       ${ttl} (${source})`,
-  reportCached: (tokens: string, model: string, by: Snapshot['touchedBy'], since: string) =>
-    `  cached    ${tokens} tokens on ${model}, last touched by a ${by} ${since} ago`,
+  reportCached: (size: string, model: string, by: Snapshot['touchedBy'], since: string) =>
+    `  cached    ${size} tokens on ${model}, last touched by a ${by} ${since} ago`,
   reportNoPrice: '  costs     no list price known for this model',
   reportLapse: (lapse: string, rewrite: string) => `  a lapse   +${lapse} over a hit (rewrite ${rewrite})`,
   reportPing: (ping: string, isMeasured: boolean, max: number) =>
@@ -93,10 +93,10 @@ const en = {
   cmdPanel: 'Open the prompt cache panel',
   paneTitle: 'Prompt cache',
   paneNothing: 'Nothing cached yet. The countdown starts with the next response.',
-  heroLeft: (tokens: string) => `left · ${tokens} tokens cached`,
+  heroLeft: (size: string) => `left · ${size} tokens cached`,
   heroAuto: (time: string, span: string) =>
     `${time ? `first ping in ${time}` : 'pinging now'} · holds ~${span}`,
-  heroCold: (tokens: string, cost: string) => `next turn rebuilds ${tokens}${cost && ` for ≈${cost}`}`,
+  heroCold: (size: string, cost: string) => `next turn rebuilds ${size}${cost && ` for ≈${cost}`}`,
   heroPinging: 'keep-alive ping on its way…',
   rowLapse: 'let it lapse',
   rowPing: 'one ping',
@@ -138,9 +138,9 @@ const zh: Messages = {
   name: '中文',
 
   bandCold: '已冷',
-  bandWarmDetail: (tokens, cost) => `已缓存 ${tokens}${cost && ` · 过期重建 ${cost}`}`,
-  bandAutoDetail: (tokens, used, budget) => `已缓存 ${tokens} · 自动保活 ${used}/${budget}`,
-  bandColdDetail: (tokens, cost) => `下一轮重建 ${tokens}${cost && `，约 ${cost}`}`,
+  bandWarmDetail: (size, cost) => `已缓存 ${size}${cost && ` · 过期重建 ${cost}`}`,
+  bandAutoDetail: (size, used, budget) => `已缓存 ${size} · 自动保活 ${used}/${budget}`,
+  bandColdDetail: (size, cost) => `下一轮重建 ${size}${cost && `，约 ${cost}`}`,
 
   cmdStatus: '显示提示缓存倒计时和过期代价',
   cmdPing: '发送一次保活，刷新提示缓存',
@@ -154,8 +154,8 @@ const zh: Messages = {
 
   pingNothing: '这个对话还没有缓存，无需保活。',
   pingBusy: '已有一次保活正在发送。',
-  pingCold: (why, tokens) =>
-    `未发送：缓存已冷（${why}）。现在保活会对全部 ${tokens} token 重新计费，而不是续期。如仍要发送，请运行 /cache-ping force。`,
+  pingCold: (why, size) =>
+    `未发送：缓存已冷（${why}）。现在保活会对全部 ${size} token 重新计费，而不是续期。如仍要发送，请运行 /cache-ping force。`,
   pingNoFork: '未发送：主对话还没有可供分叉的回复。',
   pingApiError: (error, status) => `保活因 API 错误失败（${error}，状态 ${status ?? '无'}）；缓存保持原状。`,
   pingCut: '保活在 API 响应前被中断；缓存保持原状。',
@@ -171,7 +171,7 @@ const zh: Messages = {
   reportWarm: left => `提示缓存：有效，还剩 ${left}。`,
   reportCold: why => `提示缓存：已冷（${why}）。`,
   reportTtl: (ttl, source) => `  时效：${ttl}（${SOURCE_ZH[source]}）`,
-  reportCached: (tokens, model, by, since) => `  已缓存：${tokens} token，模型 ${model}，${since} 前由${BY_ZH[by]}触达`,
+  reportCached: (size, model, by, since) => `  已缓存：${size} token，模型 ${model}，${since} 前由${BY_ZH[by]}触达`,
   reportNoPrice: '  费用：该模型没有已知标价',
   reportLapse: (lapse, rewrite) => `  过期代价：比命中多付 ${lapse}（重写 ${rewrite}）`,
   reportPing: (ping, isMeasured, max) =>
@@ -203,9 +203,9 @@ const zh: Messages = {
   cmdPanel: '打开提示缓存面板',
   paneTitle: '提示缓存',
   paneNothing: '还没有缓存，下一次回复后开始倒计时。',
-  heroLeft: tokens => `后失效 · 已缓存 ${tokens} token`,
+  heroLeft: size => `后失效 · 已缓存 ${size} token`,
   heroAuto: (time, span) => `${time ? `${time} 后自动保活` : '即将保活'} · 可保持约 ${span}`,
-  heroCold: (tokens, cost) => `下一轮重建 ${tokens}${cost && `，约 ${cost}`}`,
+  heroCold: (size, cost) => `下一轮重建 ${size}${cost && `，约 ${cost}`}`,
   heroPinging: '正在保活…',
   rowLapse: '任其过期',
   rowPing: '保活一次',
