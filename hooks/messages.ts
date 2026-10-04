@@ -8,6 +8,13 @@ export type LangSource = 'pinned' | 'conversation' | 'locale' | 'default'
 type Verdict = 'hit' | 'partial' | 'miss'
 type Counts = { read: string; wrote: string; input: number; output: number }
 
+// Where the lifetime came from, in words: the contract keeps a short code.
+const SOURCE_EN: Record<Snapshot['ttlSource'], string> = {
+  env: 'environment',
+  observed: 'observed',
+  assumed: 'assumed',
+}
+
 // Every word the mod shows. A new language is one more catalog of this shape.
 const en = {
   name: 'English',
@@ -50,7 +57,7 @@ const en = {
   reportNothing: 'Prompt cache: nothing tracked yet. The countdown starts with the next response.',
   reportWarm: (left: string) => `Prompt cache: warm, ${left} left.`,
   reportCold: (why: string) => `Prompt cache: cold (${why}).`,
-  reportTtl: (ttl: Ttl, source: Snapshot['ttlSource']) => `  ttl       ${ttl} (${source})`,
+  reportTtl: (ttl: Ttl, source: Snapshot['ttlSource']) => `  ttl       ${ttl} (${SOURCE_EN[source]})`,
   reportCached: (size: string, model: string, by: Snapshot['touchedBy'], since: string) =>
     `  cached    ${size} tokens on ${model}, last touched by a ${by} ${since} ago`,
   reportNoPrice: '  costs     no list price known for this model',

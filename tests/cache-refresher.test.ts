@@ -113,7 +113,7 @@ test('a ping is refused once the cache is cold and restarts the countdown while 
   await clock.advance(4 * MINUTE)
   const stillWarm = await $.command.run({ command: 'cache-status', args: '' })
   expect(stillWarm.text).toContain('warm, 1:00 left')
-  expect(stillWarm.text).toContain('5m (env)')
+  expect(stillWarm.text).toContain('5m (environment)')
 
   await clock.advance(2 * MINUTE)
   const refused = await $.command.run({ command: 'cache-ping', args: '' })
@@ -515,7 +515,7 @@ test('the drawings move when the cache\'s state does and are still otherwise', a
   await clock.advance(2000)
   expect(await card()).not.toContain('<animate')
 
-  // In its last fifth with nothing set to save it, the ring breathes and the band's words warn.
+  // In its last fifth with no keep-alive to come, the ring breathes and the band's words warn.
   await clock.advance(42 * MINUTE - 2200)
   drawn = await card()
   expect(drawn).toContain('<animate attributeName="opacity" values="1;0.45;1"')

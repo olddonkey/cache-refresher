@@ -1,6 +1,6 @@
 {
   "name": "cache-refresher",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Shows when the prompt cache expires and what a lapse would cost, and can keep it warm with keep-alive pings while you are away",
   "author": {
     "name": "olddonkey",
