@@ -8,12 +8,18 @@ type SpanWords = {
   join?: string
   space?: boolean
   decimal?: string
+  /** Duration nouns precede their counts in some languages, including both parts of a clock. */
+  unitFirst?: boolean
 }
 
 /** The formatters keep time compact; sentences need the language's units and punctuation. */
-export function makeSpan({ units, clockMinute = units.m, join = ' ', space = true, decimal = '.' }: SpanWords) {
+export function makeSpan({ units, clockMinute = units.m, join = ' ', space = true, decimal = '.', unitFirst = false }: SpanWords) {
   const gap = space ? ' ' : ''
-  const withUnit = (amount: string, unit: string) => `${amount.replace('.', decimal)}${gap}${unit}`
+  const withUnit = (amount: string, unit: string) => {
+    const number = amount.replace('.', decimal)
+
+    return unitFirst ? `${unit}${gap}${number}` : `${number}${gap}${unit}`
+  }
 
   return (text: string): string => {
     const clock = /^(\d+):(\d\d)$/.exec(text)

@@ -379,6 +379,50 @@ const DETECTION_SAMPLES = {
     'മാറ്റങ്ങൾ പരിശോധിക്കുകയും അഭ്യർഥന പരാജയപ്പെടുമ്പോൾ എന്ത് സംഭവിക്കുമെന്ന് പരിശോധിക്കുന്ന പരീക്ഷണം ചേർക്കുകയും ചെയ്തു. മറുപടി വന്നില്ലെങ്കിലും പഴയ ക്രമീകരണങ്ങൾ മാറില്ല. ഇനി പരീക്ഷണങ്ങൾ നടത്തി പാനലിൽ ശരിയായ മൂല്യങ്ങൾ കാണുന്നുണ്ടോ എന്ന് നോക്കുക.',
     'register.tsx ഫയലിൽ ക്രമീകരണങ്ങൾ സൂക്ഷിക്കുന്നതിന് മുമ്പ് മറുപടി പരിശോധിക്കുന്ന സംവിധാനം ചേർത്തു. അഭ്യർഥന പരാജയപ്പെട്ടാൽ പഴയ മൂല്യങ്ങൾ മാറില്ല. പരീക്ഷണങ്ങൾ നടത്തിയ ശേഷം ആപ്പ് വീണ്ടും തുറന്ന് പാനലിലെ മൂല്യങ്ങൾ പരിശോധിക്കുക.',
   ],
+  sw: [
+    'Nimekagua mabadiliko yako na kuongeza majaribio. Ikiwa ombi halina jibu, mipangilio yako haitabadilika. Unaweza kuangalia matokeo kabla ya kuendelea, lakini bado tunahitaji kuthibitisha kwamba kila kitu kinafanya kazi.',
+    'Katika register.tsx, jibu linakaguliwa kabla ya kuhifadhi mipangilio. Hii inaweka chaguo lako bila kupoteza data ikiwa ombi linashindwa. Baada ya majaribio, unaweza pia kuangalia paneli kwenye programu yako.',
+  ],
+  am: [
+    'ለውጦቹን መርምሬ ጥያቄው ሲሳካ እና ሲሳነው የሚፈትሹ ሙከራዎችን ጨምሬያለሁ። ምላሽ ባይኖርም የቀድሞዎቹ ቅንብሮች ይቀመጣሉ። አሁን ሙከራዎቹን አሂደው በማሳያው ላይ ያሉትን እሴቶች ማየት ይችላሉ።',
+    'በ register.tsx ውስጥ ቅንብሮችን ከማስቀመጥ በፊት ምላሹን የሚፈትሽ ኮድ ጨምሬያለሁ። ጥያቄው ቢሳነውም የቀድሞዎቹ እሴቶች አይቀየሩም። ሙከራዎቹን ካሄዱ በኋላ መተግበሪያውን እንደገና ከፍተው ውጤቱን ይመልከቱ።',
+  ],
+  ha: [
+    'Na duba canje-canjen kuma na ƙara gwaje-gwaje don buƙatar da ta gaza. Idan babu amsa, wannan ba zai canza zaɓinku ba. Yanzu za ku iya duba sakamakon kafin ku ci gaba da sauran aikin.',
+    'A cikin register.tsx, ana duba amsa kafin a adana zaɓi. Idan buƙata ta gaza, waɗannan zaɓuɓɓukan ba za su ɓace ba. Kuma za ku iya gudanar da gwaje-gwajen yanzu don tabbatar da halin da aka samu bayan sake farawa.',
+  ],
+  ig: [
+    'Enyochala m mgbanwe ndị a ma tinye ule maka arịrịọ dara. Ọ bụrụ na enweghị azịza, nhọrọ gị agaghị agbanwe. Ị nwere ike ilele ihe pụtara tupu ịga n’ihu, ka anyị hụ na ihe niile na-arụ ọrụ nke ọma.',
+    'Na register.tsx, a na-enyocha azịza tupu echekwa ntọala. Mgbe arịrịọ dara, nhọrọ gị agaghị efu. Ị nwere ike mee ule ndị a ugbu a, hụ ihe pụtara, wee lelee ma panel ọ na-egosi ihe kwesịrị ekwesị.',
+  ],
+  yo: [
+    'Mo ti yẹ àwọn àyípadà wò, mo sì fi ìdánwò kún un fún ìbéèrè tí ó kùnà. Bí ìdáhùn kò bá dé, àwọn àṣàyàn yín kò ní yí padà. Ẹ lè wo èsì náà kí ẹ tó tẹ̀síwájú pẹ̀lú iṣẹ́ tó kàn.',
+    'Nínú register.tsx, a ń yẹ ìdáhùn wò kí a tó fi ètò pamọ́. Bí ìbéèrè bá kùnà, àwọn àṣàyàn yín kò ní sọnù. Ẹ lè ṣe àwọn ìdánwò, lẹ́yìn náà ẹ wo bóyá panel fi àwọn iye tó tọ́ hàn.',
+  ],
+  ny: [
+    'Ndaona zosintha ndipo ndawonjezera mayeso ngati pempho lalephera. Ngati palibe yankho, zomwe mwasankha sizisintha. Tsopano inu mutha kuyang’ana zotsatira, komanso kutsimikiza kuti zonse zikugwira ntchito musanapitirire.',
+    'Mu register.tsx, yankho limayesedwa tisanayike zokonda. Ngati pempho lalephera, zomwe mwasankha sizitayika. Choncho mutha kuyendetsa mayeso tsopano, koma muyenera kuyang’ana zomwe panel ikuwonetsa pambuyo pake.',
+  ],
+  om: [
+    'Jijjiirama kana ilaalee qorannoo gaaffii hin milkoofneef dabaleera. Yoo deebiin hin jirre filannoon kee hin jijjiiramu. Ati bu’aa kana ilaaluu dandeessa, garuu hojii itti aanu dura sirriitti hojjechuu isaa mirkaneessi.',
+    'Faayilii register.tsx keessatti deebiin filannoo kuusuu dura ilaalama. Yoo gaaffiin hin milkoofne filannoon kee hin badu. Kanaaf qorannoo kana jalqabi, booda bu’aa isaa fi waan fuula irratti mul’atu ilaali.',
+  ],
+  rn: [
+    'Naragenzuye ivyahindutse maze nongerako ibipimo. Nimba ata nyishu ibonetse, ivyo mwahisemwo ntibihinduka. Rero murashobora kuraba ivyo bipimo canke kubanza kwemeza ko vyose bikora neza imbere yo kubandanya.',
+    'Muri register.tsx, inyishu iragenzurwa imbere yo kubika ivyo mwahisemwo. Nimba gusaba binaniwe, ivyo ntibitakara. Rero murashobora gukoresha ibipimo canke kuraba ico panel yerekana inyuma yo gusubira gutangura.',
+  ],
+  rw: [
+    'Nasuzumye ibyahindutse maze nongeraho ibizamini. Niba nta gisubizo kibonetse, ibyo mwahisemo ntibihinduka. Bityo mushobora kureba ibyo bizamini cyangwa kubanza kwemeza ko byose bikora neza mbere yo gukomeza.',
+    'Muri register.tsx, igisubizo gisuzumwa mbere yo kubika ibyo mwahisemo. Niba gusaba byananiranye, ibyo ntibitakara. Bityo mushobora gukoresha ibizamini cyangwa kureba icyo panel yerekana nyuma yo kongera gutangira.',
+  ],
+  so: [
+    'Waxaan eegay isbeddellada waxaana ku daray tijaabooyin codsiga fashilma. Haddii jawaab la waayo, doorashooyinkaagu isma beddelaan. Hadda waxaad eegi kartaa natiijada, laakiin weli waa in la hubiyaa waxa shaashaddu muujinayso.',
+    'Faylka register.tsx wuxuu hubiyaa jawaabta ka hor inta aan la kaydin dejinta. Haddii codsigu fashilmo, doorashooyinkaagu ma lumayaan. Waxaad samayn kartaa tijaabooyinka hadda, kadib eeg in dhammaan qiimayaashu sax yihiin.',
+  ],
+  wo: [
+    'Xool naa coppite yi te yokk naa ay seetlu ngir laaj bu antuwul. Bu tontu amul, sa tànneef yi soppeekuwuñu. Léegi nga man a xool njeexital bi bala ngay wéyal liggéey bi, ngir ñu wóor ne lépp di dox.',
+    'Ci register.tsx, dañuy seetlu tontu bi bala ñuy denc tànneef yi. Bu laaj bi antuwul, sa tànneef yi duñu réer. Kon nga man a doxal seetlu yi, gannaaw loolu nga xool ndax panel bi wone na lim yi nu war.',
+  ],
   bho: [
     'बदलाव तैयार बा आ हमनी गलती वाला हालत के जाँच जोड़ले बानी। जवाब ना आई तबो पुरान सेटिंग ना बदली। रउआ जाँच चला के देखीं कि पैनल में सही मान देखात बा कि ना। ओकर बाद अगिला काम शुरू कइल जा सकेला।',
     'register.tsx में जवाब जाँचे के इंतजाम जोड़ल बा। अनुरोध नाकाम होखे त पुरान मान ना बदली आ रउआ के चुनल सेटिंग ओही तरह रही। हमनी जाँच चला सकेनी आ फेर ऐप खोले के बाद पैनल के मान देख सकेनी।',
@@ -387,6 +431,61 @@ const DETECTION_SAMPLES = {
 
 const ENGLISH = DETECTION_SAMPLES.en[0]!
 const CHINESE = DETECTION_SAMPLES.zh[0]!
+
+// Independent review replies: retain the originals even where a wording correction is useful.
+const UNIT_FIVE_HELD_OUT_SAMPLES = {
+  sw: [
+    'Nimesasisha faili ya register.tsx na kuongeza majaribio mapya. Sasa cache ya prompt itaongezwa muda kabla haijaisha, na unaweza kuona hali yake kwenye paneli.',
+    'Tatizo lilikuwa kwenye njia ya faili. Nimeirekebisha na kuendesha majaribio yote; yamepita. Ukitaka, naweza pia kuongeza maelezo kwenye README.',
+  ],
+  ny: ['Ndasintha fayilo ya register.tsx ndipo ndawonjezera mayeso atsopano. Tsopano cache imakhala nthawi yayitali, ndipo mungathe kuona momwe ilili pa gulu.'],
+  rw: ['Nahinduye dosiye register.tsx kandi nongeyeho ibizamini bishya. Ubu cache izongererwa igihe mbere y’uko irangira, kandi ushobora kubona uko ihagaze.'],
+  rn: ['Nahinduye idosiye register.tsx kandi nongeyeko ibigeragezo bishasha. Ubu cache izokwongererwa igihe imbere y’uko iheza, kandi urashobora kubona uko imeze.'],
+  yo: ['Mo ti ṣe àtúnṣe sí fáìlì register.tsx, mo sì fi àwọn ìdánwò tuntun kún un. Báyìí cache náà yóò pẹ́ ju ti tẹ́lẹ̀ lọ, o sì lè rí ipò rẹ̀ nínú pánẹ́ẹ̀lì.'],
+  ig: ['Emeela m mgbanwe na faịlụ register.tsx ma tinye ule ọhụrụ. Ugbu a cache ga-adịte aka karịa, ị nwekwara ike ịhụ ọnọdụ ya na panel ahụ.'],
+  ha: ['Na sabunta fayil ɗin register.tsx kuma na ƙara sababbin gwaje-gwaje. Yanzu cache zai daɗe fiye da da, kuma za ka iya ganin yanayinsa a cikin allon.'],
+  so: ['Waxaan cusboonaysiiyay faylka register.tsx waxaana ku daray tijaabooyin cusub. Hadda cache-ku wuu sii jiri doonaa, waxaadna arki kartaa xaaladdiisa.'],
+  om: ['Faayilii register.tsx haaromseera, qormaata haaraas itti dabaleera. Amma cache-n yeroo dheeraaf turuu danda’a, haala isaas paanaalii keessatti arguu dandeessa.'],
+  wo: ['Soppi naa fichier bi register.tsx te yokk naa ay test yu bees. Léegi cache bi dina yàgg, te mën nga gis ni mu tollu ci panel bi.'],
+} satisfies Partial<Record<Lang, readonly string[]>>
+
+const UNIT_FIVE_REVISED_SAMPLES = {
+  sw: ['Nimesasisha faili ya register.tsx na kuongeza majaribio mapya. Sasa cache ya prompt itaongezewa muda kabla haijaisha, na unaweza kuona hali yake kwenye paneli.'],
+  ny: ['Ndasintha fayilo ya register.tsx ndipo ndawonjezera mayeso atsopano. Tsopano cache imakhala nthawi yayitali, ndipo mungathe kuona momwe ilili pa panel.'],
+  ha: ['Na sabunta fayil ɗin register.tsx kuma na ƙara sababbin gwaje-gwaje. Yanzu cache zai daɗe fiye da a da, kuma za ka iya ganin yanayinsa a cikin allon.'],
+  wo: ['Soppi naa fichier register.tsx bi te yokk naa ay test yu bees. Léegi cache bi dina yàgg, te mën nga gis ni mu tollu ci panel bi.'],
+} satisfies Partial<Record<Lang, readonly string[]>>
+
+test('unit five held-out and revised replies select their own locale', () => {
+  expect(Object.values(UNIT_FIVE_HELD_OUT_SAMPLES).flat().length).toBe(11)
+  for (const samples of [UNIT_FIVE_HELD_OUT_SAMPLES, UNIT_FIVE_REVISED_SAMPLES]) {
+    for (const [lang, replies] of Object.entries(samples)) {
+      for (const reply of replies) {
+        expect(detect(reply)?.lang).toBe(lang)
+        expect(detect(reply.replace('register.tsx', '`register.tsx`'))?.lang).toBe(lang)
+      }
+    }
+  }
+})
+
+test('unit five function words avoid other Latin catalogs except the shared Kirundi and Kinyarwanda forms', () => {
+  const latin = LOCALES.filter(locale => locale.script === 'latin' && !('variantOf' in locale))
+  for (const locale of latin.filter(locale => UNIT_FIVE.some(code => code === locale.code))) {
+    if (!('words' in locale)) continue
+    for (const word of locale.words) {
+      const owners = latin.filter(other => 'words' in other && other.words.some(candidate => candidate === word)).map(other => other.code)
+      if (owners.length > 1) expect(owners).toEqual(['rn', 'rw'])
+      // Apostrophe-split English don't and shared African particles are not Igbo/Hausa evidence.
+      if (locale.code === 'ig') expect(['na', 'ya', 'ma', 'ka', 'mana', 'maka']).not.toContain(word)
+      if (locale.code === 'ha') expect(word).not.toBe('don')
+    }
+  }
+  const shared = 'na ya ma ka ' + 'abcdef'.repeat(10)
+  expect(detect(shared)).toBe(null)
+  expect(detect("don't don't don't " + 'abcdef'.repeat(10))).toBe(null)
+  const dutch = 'Je kunt controleren of de nieuwe instellingen aanwezig zijn, zodat jouw bestanden behouden blijven wanneer een verzoek mislukt.'
+  expect(detect(dutch)?.lang).toBe('nl')
+})
 
 test('every detection sample belongs only to its own language', () => {
   const detectable = LOCALES.filter(locale => !('variantOf' in locale)).map(locale => locale.code)
@@ -414,6 +513,54 @@ test('unit three samples never select another locale and include a file name', (
 })
 
 const UNIT_FOUR = ['hi', 'bn', 'mr', 'gu', 'ta', 'te', 'kn', 'ml', 'bho'] as const
+
+const UNIT_FIVE = ['sw', 'am', 'ha', 'ig', 'yo', 'ny', 'om', 'rn', 'rw', 'so', 'wo'] as const
+
+test('unit five has eleven catalogs, two prose samples each and no wrong-language detections', () => {
+  expect(LANGS.length).toBe(43)
+  for (const lang of UNIT_FIVE) {
+    const m = MESSAGES[lang]
+    expect(m.tag).toBe(lang)
+    expect(m.fonts).toBe('')
+    const samples = DETECTION_SAMPLES[lang]
+    expect(samples.length).toBe(2)
+    expect(samples.some(sample => sample.includes('register.tsx'))).toBe(true)
+    for (const sample of samples) {
+      expect((sample.match(/\p{L}/gu) ?? []).length >= 60).toBe(true)
+      const found = detect(sample)
+      expect(found?.lang).toBe(lang)
+      for (const other of LANGS.filter(code => code !== lang)) expect(found?.lang).not.toBe(other)
+    }
+    const locale = LOCALES.find(locale => locale.code === lang)!
+    if ('words' in locale) {
+      expect(locale.words.length >= 24).toBe(true)
+      expect(new Set(locale.words).size).toBe(locale.words.length)
+      for (const word of locale.words) {
+        expect(word).toBe(word.toLowerCase())
+        expect(word.match(/^\p{L}[\p{L}\p{M}]*$/u)?.[0]).toBe(word)
+      }
+    }
+  }
+})
+
+test('African Latin letters decompose for width and retain their detection', () => {
+  expect(estimateWidth('ịọụṅẹọṣàáèéìíòóùú', 14)).toBe(estimateWidth('iouneosaaeeiioouu', 14))
+  expect(estimateWidth('ɓɗƙƴ', 14)).toBe((0.60 + 0.60 + 0.53 + 0.57) * 14)
+  for (const lang of ['ha', 'ig', 'yo'] as const) {
+    for (const sample of DETECTION_SAMPLES[lang]) expect(detect(sample.normalize('NFD'))?.lang).toBe(lang)
+  }
+})
+
+test('related African languages require their distinct forms', () => {
+  const shared = 'Ubutumwa bwakiriwe neza kandi gahunda irakora. Ubu ushobora kugenzura umusaruro.'
+  expect(detect(shared)).toBe(null)
+  expect(detect('ivyo canke nimba ' + shared)?.lang).toBe('rn')
+  expect(detect('ibyo cyangwa niba ' + shared)?.lang).toBe('rw')
+  expect(detect('ivyo canke nimba ibyo cyangwa niba ' + shared)).toBe(null)
+  const prose = 'Mabadiliko yako yamekaguliwa. Zosintha zanu zayesedwa. Mipangilio inaweza kuhifadhiwa.'
+  expect(detect('ikiwa lakini kwamba ' + prose)?.lang).toBe('sw')
+  expect(detect('ngati koma choncho ' + prose)?.lang).toBe('ny')
+})
 
 test('unit four samples never select another locale and include a file name', () => {
   for (const lang of UNIT_FOUR) {
@@ -474,6 +621,17 @@ test('new language hints recognise locales, bare codes, English and native names
     kn: ['kn_IN.UTF-8', 'kn', 'Kannada', 'ಕನ್ನಡ'],
     ml: ['ml_IN.UTF-8', 'ml', 'Malayalam', 'മലയാളം'],
     bho: ['bho_IN.UTF-8', 'bho', 'Bhojpuri', 'भोजपुरी'],
+    sw: ['sw_KE.UTF-8', 'sw_TZ', 'sw', 'Swahili', 'Kiswahili'],
+    am: ['am_ET.UTF-8', 'am', 'Amharic', 'አማርኛ'],
+    ha: ['ha_NG.UTF-8', 'ha', 'Hausa'],
+    ig: ['ig_NG.UTF-8', 'ig', 'Igbo'],
+    yo: ['yo_NG.UTF-8', 'yo', 'Yoruba', 'Yorùbá'],
+    ny: ['ny_MW.UTF-8', 'ny', 'Chichewa', 'Chinyanja', 'Nyanja'],
+    om: ['om_ET.UTF-8', 'om', 'Oromo', 'Afaan Oromoo'],
+    rn: ['rn_BI.UTF-8', 'rn', 'Kirundi', 'Ikirundi', 'Rundi'],
+    rw: ['rw_RW.UTF-8', 'rw', 'Kinyarwanda', 'Ikinyarwanda'],
+    so: ['so_SO.UTF-8', 'so', 'Somali', 'Soomaali'],
+    wo: ['wo_SN.UTF-8', 'wo', 'Wolof'],
   }
   for (const [lang, samples] of Object.entries(hints)) {
     for (const hint of samples) expect(langFrom(hint)).toBe(lang)
@@ -518,7 +676,7 @@ test('the most recent single hit fits the history caption', () => {
   for (const lang of LANGS) expect(estimateWidth(MESSAGES[lang].historyAll(1), 12) <= 120).toBe(true)
 })
 
-for (const lang of ['ja', 'fr', 'nb', 'th', 'hi', 'ta'] as const) {
+for (const lang of ['ja', 'fr', 'nb', 'th', 'hi', 'ta', 'am', 'rn'] as const) {
   test(lang + ' pin changes the cache-status language', async ($, on) => {
     mock.clock(on, { now: 1_700_000_000_000 })
     mock.store(on)
@@ -605,6 +763,45 @@ test('span words retain the Chinese clock and allow other punctuation', () => {
   expect(compact('4:35')).toBe('4min et 35sec')
   expect(compact('3:00')).toBe('3min')
   expect(MESSAGES.zh.reportWarm('3:00')).toBe('提示缓存：有效，剩余 3 分钟。')
+})
+
+test('unit-first spans keep decimals, clock seconds and the other formatting options', () => {
+  const swahili = makeSpan({ units: { s: 'sekunde', m: 'dakika', h: 'saa' }, unitFirst: true })
+  for (const [compact, words] of [
+    ['52m', 'dakika 52'], ['1.5h', 'saa 1.5'], ['42s', 'sekunde 42'],
+    ['4:35', 'dakika 4 sekunde 35'], ['3:00', 'dakika 3'], ['4:05', 'dakika 4 sekunde 5'],
+    ['expired', 'expired'], ['', ''],
+  ]) expect(swahili(compact!)).toBe(words)
+  const compact = makeSpan({
+    units: { s: 'sekunde', m: 'dakika', h: 'saa' }, clockMinute: 'dak',
+    join: ' na ', space: false, decimal: ',', unitFirst: true,
+  })
+  expect(compact('11.9h')).toBe('saa11,9')
+  expect(compact('4:05')).toBe('dak4 na sekunde5')
+  expect(compact('3:00')).toBe('dakika3')
+})
+
+test('unit five catalogs put each duration and clock in their own counting order', () => {
+  const spans = {
+    sw: ['saa 1.5', 'dak 4 sek 35', 'dak 3', 'sek 42'],
+    am: ['1.5 ሰዓ', '4 ደቂ 35 ሰከ', '3 ደቂ', '42 ሰከ'],
+    ha: ['h 1.5', 'min 4 s 35', 'min 3', 's 42'],
+    ig: ['h 1.5', 'min 4 s 35', 'min 3', 's 42'],
+    yo: ['h 1.5', 'min 4 s 35', 'min 3', 's 42'],
+    ny: ['h 1.5', 'min 4 s 35', 'min 3', 's 42'],
+    om: ['sa’a 1.5', 'daq 4 s 35', 'daq 3', 's 42'],
+    rn: ['h 1.5', 'min 4 s 35', 'min 3', 's 42'],
+    rw: ['h 1.5', 'min 4 s 35', 'min 3', 's 42'],
+    so: ['1.5 saac', '4 daq 35 s', '3 daq', '42 s'],
+    wo: ['1.5 h', '4 min 35 s', '3 min', '42 s'],
+  }
+  for (const lang of UNIT_FIVE) {
+    const m = MESSAGES[lang]
+    expect(m.reportWarm('1.5h')).toContain(spans[lang][0]!)
+    expect(m.reportWarm('4:35')).toContain(spans[lang][1]!)
+    expect(m.nextIn('3:00')).toContain(spans[lang][2]!)
+    expect(m.expiredAgo('42s')).toContain(spans[lang][3]!)
+  }
 })
 
 test('all drawing entry points default to English and carry each catalog language and fonts', () => {

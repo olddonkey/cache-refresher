@@ -31,6 +31,17 @@ import { te } from './locales/te'
 import { kn } from './locales/kn'
 import { ml } from './locales/ml'
 import { bho } from './locales/bho'
+import { sw } from './locales/sw'
+import { am } from './locales/am'
+import { ha } from './locales/ha'
+import { ig } from './locales/ig'
+import { yo } from './locales/yo'
+import { ny } from './locales/ny'
+import { om } from './locales/om'
+import { rn } from './locales/rn'
+import { rw } from './locales/rw'
+import { so } from './locales/so'
+import { wo } from './locales/wo'
 
 export type { Messages } from './locales/en'
 
@@ -361,6 +372,137 @@ export const LOCALES = [
       'बा', 'बाड़े', 'बानी', 'बाड़ऽ', 'बाड़न', 'रहल', 'रहली', 'हमनी', 'आ', 'भा',
       'रउआ', 'रउरा', 'ओकर', 'एकर', 'कवन', 'काहे', 'कइसन', 'नइखे', 'नाहीं',
       'हई', 'होखे', 'संगे', 'खातिर', 'अइसन', 'तइसन', 'ओह', 'एह', 'त', 'तबे',
+    ],
+  },
+  {
+    code: 'sw',
+    messages: sw,
+    pattern: /^(?:sw(?:[-_]|$)|swahili\b|kiswahili\b)/,
+    script: 'latin',
+    // Inflected auxiliaries are common in replies; na, ni, kwa and possessives overlap with neighbours.
+    marks: /(?<![\p{L}\p{M}])(?:nime|nina|nita|tume|tuna|una|uta|haija|haiku|yame|ime)(?=\p{L})/iu,
+    words: [
+      'ikiwa', 'lakini', 'hivyo', 'kwamba', 'ambayo', 'ambazo', 'ambaye', 'hii', 'hiyo',
+      'hizi', 'hizo', 'wewe', 'wetu', 'yetu', 'kwenye', 'kutoka', 'baada', 'kabla',
+      'bado', 'sasa', 'pia', 'yote', 'unaweza', 'naweza', 'lilikuwa', 'ukitaka',
+    ],
+  },
+  {
+    code: 'am',
+    messages: am,
+    pattern: /^(?:am(?:[-_]|$)|amharic\b|አማርኛ)/,
+    script: 'ethiopic',
+  },
+  {
+    code: 'ha',
+    messages: ha,
+    pattern: /^(?:ha(?:[-_]|$)|hausa\b)/,
+    script: 'latin',
+    marks: /[ɓɗƙƴ]/iu,
+    words: [
+      'amma', 'idan', 'saboda', 'kuma', 'wannan', 'waɗannan', 'zai', 'iya',
+      'wanda', 'wadda', 'waɗanda', 'kowane', 'kowace', 'kowa', 'wani', 'wata', 'wasu',
+      'yanzu', 'tukuna', 'tsakanin', 'bayan', 'kafin', 'cikin', 'daga', 'ɗin', 'babu', 'duk', 'kawai',
+    ],
+  },
+  {
+    code: 'ig',
+    messages: ig,
+    pattern: /^(?:ig(?:[-_]|$)|igbo\b)/,
+    script: 'latin',
+    // Vietnamese shares the dotted vowels. The nwe auxiliary and hyphenated ga- future help separate it.
+    marks: /[ịọụṅ]|[iou]\u0323|n\u0307|nwe|(?<![\p{L}\p{M}])ga[-‐‑]/iu,
+    words: [
+      'anyị', 'onye', 'unu', 'ụnụ', 'gị', 'ụfọdụ', 'nke', 'ọ', 'bụ', 'abụghị',
+      'dị', 'adịghị', 'mgbe', 'tupu', 'ahụ', 'ugbu', 'nwere', 'nwekwara', 'ike',
+      'karịa', 'enweghị', 'agaghị', 'gaghị', 'ebe', 'ọzọ', 'ime', 'naanị', 'dịka',
+      'kemgbe', 'agbanyeghị', 'ị',
+    ],
+  },
+  {
+    code: 'yo',
+    messages: yo,
+    pattern: /^(?:yo(?:[-_]|$)|yoruba\b|yorùbá(?:\s|$))/,
+    script: 'latin',
+    marks: /[ẹọṣàáèéìíòóùú]|[aeiouẹọ][\u0300\u0301]|[eos]\u0323/iu,
+    words: [
+      'àwọn', 'ní', 'tí', 'sí', 'fún', 'pẹ̀lú', 'ṣùgbọ́n', 'nítorí', 'bí', 'bá',
+      'yóò', 'kò', 'kì', 'ń', 'ó', 'wọ́n', 'ẹ', 'yín', 'wa', 'rẹ̀', 'èyí', 'yìí',
+      'nínú', 'lẹ́yìn', 'ṣáájú', 'ṣe', 'lè', 'náà', 'báyìí', 'tó', 'tún', 'kí',
+    ],
+  },
+  {
+    code: 'ny',
+    messages: ny,
+    pattern: /^(?:ny(?:[-_]|$)|chichewa\b|chinyanja\b|nyanja\b)/,
+    script: 'latin',
+    words: [
+      'koma', 'ngati', 'chifukwa', 'choncho', 'kapena', 'kuti', 'pamene', 'pambuyo',
+      'ndipo', 'momwe', 'mungathe', 'ilili', 'tsopano', 'panobe', 'komanso', 'kokha',
+      'zonse', 'onse', 'inu', 'ine', 'ife', 'iwo', 'wanu', 'yanu', 'yathu', 'yawo',
+      'yomwe', 'omwe', 'palibe', 'ngakhale', 'zimene',
+    ],
+  },
+  {
+    code: 'om',
+    messages: om,
+    pattern: /^(?:om(?:[-_]|$)|oromo\b|afaan oromoo\b)/,
+    script: 'latin',
+    // Perfect -eera and ability -eessa are frequent; unrestricted doubled vowels would also claim Dutch.
+    marks: /\p{L}+(?:eera|eessa)(?![\p{L}\p{M}])/iu,
+    words: [
+      'fi', 'yookaan', 'garuu', 'yoo', 'waan', 'akka', 'kana', 'sana', 'miti',
+      'ati', 'isin', 'inni', 'isheen', 'isaan', 'nuti', 'kee', 'keessan', 'isaa',
+      'ishee', 'keessa', 'keessatti', 'irraa', 'booda', 'itti', 'isaas', 'ammallee',
+    ],
+  },
+  {
+    code: 'rn',
+    messages: rn,
+    pattern: /^(?:rn(?:[-_]|$)|kirundi\b|ikirundi\b|rundi\b)/,
+    script: 'latin',
+    // Shared auxiliaries count for both. Inflected ivy-/ntivy-, shasha and izokw- supply the contrast.
+    marks: /(?<![\p{L}\p{M}])(?:ivy|ntivy)(?=[aeiou])|shasha|izokw/iu,
+    words: [
+      'canke', 'nimba', 'ivyo', 'ico', 'ca', 'vyo', 'vyose', 'vyinshi',
+      'vyonyene', 'vyari', 'vyoba', 'vyacu', 'vyanyu', 'vyabo', 'vyayo', 'cacu',
+      'canyu', 'rero', 'haciye', 'gushika', 'ubu', 'uko', 'imeze', 'irakora', 'ntikora', 'ari', 'ubwo',
+    ],
+  },
+  {
+    code: 'rw',
+    messages: rw,
+    pattern: /^(?:rw(?:[-_]|$)|kinyarwanda\b|ikinyarwanda\b)/,
+    script: 'latin',
+    marks: /(?<![\p{L}\p{M}])(?:iby|ntiby|icy|cy)(?=[aeiou])|shy/iu,
+    words: [
+      'cyangwa', 'niba', 'ibyo', 'byose', 'icyo', 'byo', 'cyo',
+      'byaba', 'byari', 'byacu', 'byinshi', 'byonyine', 'cyane', 'ubwo', 'nyuma',
+      'mbere', 'bityo', 'kuko', 'ndetse', 'ntabwo', 'ntacyo', 'ubu', 'uko', 'imeze',
+      'irakora', 'ntikora', 'ari',
+    ],
+  },
+  {
+    code: 'so',
+    messages: so,
+    pattern: /^(?:so(?:[-_]|$)|somali\b|soomaali\b)/,
+    script: 'latin',
+    words: [
+      'waxaa', 'waxay', 'wuxuu', 'waxaan', 'waxaad', 'waxaana', 'waxaadna', 'wuu',
+      'sii', 'doonaa', 'kartaa', 'waa', 'haddii', 'laakiin', 'sidaas',
+      'sida', 'sababtoo', 'marka', 'markuu', 'markaas', 'hadda', 'weli', 'kadib',
+      'hor', 'gudahood', 'dhammaan', 'keliya', 'iyadoo', 'isaga', 'iyada', 'iyaga', 'adiga',
+    ],
+  },
+  {
+    code: 'wo',
+    messages: wo,
+    pattern: /^(?:wo(?:[-_]|$)|wolof\b)/,
+    script: 'latin',
+    words: [
+      'ñu', 'ñuy', 'ñi', 'ñoom', 'ñun', 'yow', 'yéen', 'nga', 'ngay', 'naa',
+      'ngir', 'ak', 'ci', 'bi', 'wi', 'yi', 'benn', 'bépp', 'yépp', 'walla',
+      'waaye', 'kon', 'gannaaw', 'bala', 'dina', 'dafa', 'dafay', 'mën', 'léegi', 'rekk', 'loolu',
     ],
   },
 ] as const satisfies readonly Locale[]
