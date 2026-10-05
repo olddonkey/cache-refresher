@@ -8,7 +8,7 @@
     {
       "name": "cache-refresher",
       "source": "./",
-      "description": "Shows when the prompt cache expires and what a lapse would cost, and can keep it warm with keep-alive pings while you are away"
+      "description": "Shows when your prompt cache expires and what rebuilding it would cost. Optional auto-refresh, off by default, keeps it active while you are away and uses a little plan usage or API credit."
     }
   ]
 }

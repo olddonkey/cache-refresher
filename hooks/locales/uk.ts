@@ -1,0 +1,111 @@
+import type { Snapshot } from '../../types'
+import type { Messages } from './en'
+import { makeSpan } from './shared'
+import type { Verdict } from './shared'
+
+const SOURCE_UK: Record<Snapshot['ttlSource'], string> = { env: 'середовище', observed: 'спостереження', assumed: 'припущення' }
+const BY_UK: Record<Snapshot['touchedBy'], string> = { turn: 'повідомлення', ping: 'подовження', resume: 'відновлення сеансу' }
+const AFTER_UK: Record<Snapshot['touchedBy'], string> = { turn: 'повідомлення', ping: 'подовження', resume: 'відновлення сеансу' }
+const VERDICT_UK: Record<Verdict, string> = { hit: 'влучання', partial: 'часткове влучання', miss: 'промах' }
+const spanUk = makeSpan({ units: { s: 'с', m: 'хв', h: 'год' } })
+
+function plural(n: number, one: string, few: string, many: string): string {
+  if (n % 100 >= 11 && n % 100 <= 14) return many
+
+  return n % 10 === 1 ? one : n % 10 >= 2 && n % 10 <= 4 ? few : many
+}
+
+// Активний, доки строк не спливе; подовження відновлює строк, потім перебудова. Звертання на «ви».
+export const uk: Messages = {
+  name: 'Українська',
+  tag: 'uk',
+  fonts: '',
+
+  bandCold: 'Строк сплив',
+  bandUnusable: 'Недоступно',
+  bandWarmDetail: (size, cost) => `${size} у кеші${cost && ` · перебудова після спливу строку: ${cost}`}`,
+  bandAutoDetail: (size, used, budget) => `${size} у кеші · автоподовження ${used}/${budget}`,
+  bandColdDetail: (size, cost) => `наступне повідомлення перебудує ${size} токенів${cost && ` (≈${cost})`}`,
+  cmdStatus: 'Показати стан кешу промптів, залишок часу й оцінку вартості перебудови',
+  cmdPing: 'Подовжити кеш промптів зараз',
+  cmdAuto: 'Переглянути або змінити автоподовження',
+  cmdAutoHint: '[on|off] [ліміт подовжень]',
+  cmdLang: 'Вибрати мову інтерфейсу',
+  cmdLangHint: '[auto|код]',
+  expiredAgo: gap => `строк сплив ${spanUk(gap)} тому`,
+  coldPing: 'останнє подовження дало промах кешу',
+  coldModel: model => `модель змінено на ${model}`,
+  pingNothing: 'У кеші ще нічого немає, подовжувати нічого.',
+  pingBusy: 'Подовження вже триває.',
+  pingCold: (why, size) => `Не надіслано: кеш неактивний (${why}). Зараз запит перебудує всі ${size} токенів за ціною запису в кеш. Щоб усе одно надіслати, виконайте /cache-ping force.`,
+  pingNoFork: 'Не надіслано: у цій розмові ще немає відповіді.',
+  pingApiError: (error, status) => `Подовження не вдалося: помилка API (${error}, статус ${status ?? 'немає'}). Відлік не було скинуто.`,
+  pingCut: 'Подовження перервано до відповіді API. Відлік не було скинуто.',
+  counts: c => `прочитано ${c.read}, записано ${c.wrote}, вхід ${c.input}, вихід ${c.output}`,
+  atListPrice: usd => ` ≈${usd} за прейскурантом.`,
+  pingHit: (counts, cost, ttl) => `Кеш подовжено: ${counts}.${cost} Відлік скинуто до ${spanUk(ttl)}.`,
+  pingRewrote: (counts, cost) => `Промах кешу. Кеш перебудовано: ${counts}.${cost}`,
+  pingMissed: (counts, cost) => `Промах кешу: ${counts}.${cost} Кеш не було подовжено.`,
+  autoLog: (n, budget, text) => `Автоподовження ${n}/${budget}. ${text}`,
+  autoMissToast: 'Автоподовження не вдалося. Див. /cache-status',
+  reportNothing: 'Кеш промптів: поки порожній. Відлік почнеться після наступної відповіді.',
+  reportWarm: left => `Кеш промптів: активний, залишилося ${spanUk(left)}.`,
+  reportCold: why => `Кеш промптів: неактивний (${why}).`,
+  reportTtl: (ttl, source) => `  Строк дії: ${spanUk(ttl)} (${SOURCE_UK[source]})`,
+  reportCached: (size, model, by, since) => `  У кеші: ${size} токенів на ${model}, останнє використання ${spanUk(since)} тому (${BY_UK[by]})`,
+  reportNoPrice: '  Вартість: ціни для цієї моделі недоступні',
+  reportLapse: (lapse, rewrite) => `  Якщо строк спливе: ${rewrite} за перебудову, на ${lapse} більше, ніж за влучання в кеш`,
+  reportPing: (ping, isMeasured, max) => `  Одне подовження: близько ${ping} (додаткові токени: ${isMeasured ? 'виміряно' : 'оцінено'}). Вартість до ${max} ${plural(max, 'подовження', 'подовжень', 'подовжень')} поспіль нижча за вартість однієї перебудови`,
+  reportPingNone: (ping, isMeasured) => `  Одне подовження: близько ${ping} (додаткові токени: ${isMeasured ? 'виміряно' : 'оцінено'}). Це більше доплати за сплив строку, тож подовжувати невигідно`,
+  reportRule: (ttl, percent) => `  Орієнтир: подовження вигідне, якщо ймовірність вашого повернення протягом ${spanUk(ttl)} перевищує ${percent}%`,
+  reportLastPing: (ago, counts) => `  Останнє подовження: ${spanUk(ago)} тому, ${counts}`,
+  reportTouches: 'Останні звернення до кешу:',
+  reportTouch: (kind, gap, prevBy, ttl, verdict, read, cached) => `  ${BY_UK[kind]}, через ${spanUk(gap)} після ${AFTER_UK[prevBy]} (${spanUk(ttl)}): ${VERDICT_UK[verdict]}, прочитано ${read} із ${cached}`,
+  reportFooter: 'Вартість оцінено за прейскурантом API. У передплаті це використання плану, а не грошові списання.',
+  autoHeader: 'Автоподовження:',
+  autoOff: '  Автоподовження: вимкнено (виконайте /cache-auto on, щоб кеш залишався активним за вашої відсутності)',
+  autoWaiting: cap => `  Автоподовження: увімкнено, до ${cap} ${plural(cap, 'подовження', 'подовжень', 'подовжень')} за період простою. Очікування першої відповіді`,
+  autoOn: (used, budget, cap, next) => `  Автоподовження: увімкнено, використано ${used} із ${budget} після останнього повідомлення (ліміт ${cap}). Наступне: ${spanUk(next)}`,
+  autoOnNone: cap => `  Автоподовження: увімкнено (ліміт ${cap}), без надсилання: подовження дорожче за доплату після спливу строку цього кешу`,
+  nextCold: 'немає, кеш неактивний',
+  nextSpent: 'немає, ліміт цього періоду простою вичерпано',
+  nextIn: time => `через ${spanUk(time)}`,
+  nextNow: 'ось-ось',
+  autoPings: state => `  Ефект: ${state}`,
+  extendsYes: ttl => `підтверджено, подовження відновлює весь строк у ${spanUk(ttl)}`,
+  extendsNo: 'не підтверджено. Після останнього подовження був промах, тому за період простою надсилається лише одне',
+  extendsUnknown: ttl => `ще не підтверджено. Одне подовження за період простою, доки не перевірено, що воно відновлює весь строк у ${spanUk(ttl)}`,
+  autoNote: '  Примітка: подовження надсилаються лише коли застосунок працює, а комп’ютер не спить; кожне використовує план або кредит API',
+  autoUsage: max => `Використання: /cache-auto [on|off] [ліміт за період простою, 1-${max}]`,
+  details: 'Деталі ›',
+  cmdPanel: 'Відкрити панель кешу промптів',
+  paneTitle: 'Кеш промптів',
+  paneNothing: 'Поки порожній. Відлік почнеться після наступної відповіді.',
+  heroLeft: size => `залишилось · ${size} токенів у кеші`,
+  heroAuto: (time, span) => `${time ? `подовження за ${spanUk(time)}` : 'скоро подовження'} · ≤ ~${spanUk(span)}`,
+  heroCold: (size, cost) => `перебудова ${size}${cost && ` (≈${cost})`}`,
+  heroPinging: 'Подовження…',
+  rowLapse: 'Сплив строку',
+  rowPing: 'Подовження',
+  breakEven: max => `${max} ${plural(max, 'подовження', 'подовження', 'подовжень')} ≈ 1 перебудова`,
+  breakEvenNone: 'Тут подовження дорожче за перебудову',
+  breakEvenRule: (max, percent) => `${max} ${plural(max, 'подовження', 'подовження', 'подовжень')} ≈ 1 перебудова · вигідно, якщо ймовірність повернення вища за ${percent}%`,
+  noPrice: 'Ціни для цієї моделі недоступні',
+  autoTitle: 'Подовжувати в простої',
+  btnOn: 'Увімк.',
+  btnOff: 'Вимк.',
+  autoPlanOff: (left, span) => `До ${left} ${plural(left, 'разу', 'разів', 'разів')}${span && ` · ~${spanUk(span)}`}`,
+  autoPlanOn: (used, budget) => `${used}/${budget} використано`,
+  autoTrialOff: cap => `1 проба; до ${cap}, якщо діє`,
+  autoTrialOn: (used, cap) => `Проба ${used}/1; до ${cap}, якщо діє`,
+  autoSpent: 'До нового повідомлення: 0',
+  autoNotWorth: 'Для цього кешу невигідно',
+  historyAll: n => n === 1 ? 'Останнє: влучання' : `${n} із ${n}: влучання`,
+  historySome: (n, misses) => `${misses} із ${n}: ${plural(misses, 'промах', 'промахи', 'промахів')}`,
+  historyEmpty: 'Історії ще немає',
+  btnPing: 'Подовжити',
+  listPrice: 'Оцінки за прейскурантом API',
+  priceNote: cap => `Оцінка: до ${cap} · прейскурант API`,
+  langNow: (name, source) => `Мова: ${name} (${{ pinned: 'вручну', conversation: 'за розмовою', locale: 'за системою', default: 'типова' }[source]}).`,
+  langUsage: codes => `Використання: /cache-lang [auto|код]. Коди: ${codes}`,
+}

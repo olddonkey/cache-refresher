@@ -1,252 +1,528 @@
-import type { Snapshot, Ttl } from '../types'
+import { en } from './locales/en'
+import type { Messages } from './locales/en'
+import { zh } from './locales/zh'
+import { zhHant } from './locales/zh-Hant'
+import { ja } from './locales/ja'
+import { ko } from './locales/ko'
+import { es } from './locales/es'
+import { es419 } from './locales/es-419'
+import { fr } from './locales/fr'
+import { de } from './locales/de'
+import { ptBR } from './locales/pt-BR'
+import { it } from './locales/it'
+import { ru } from './locales/ru'
+import { uk } from './locales/uk'
+import { nl } from './locales/nl'
+import { sv } from './locales/sv'
+import { da } from './locales/da'
+import { nb } from './locales/nb'
+import { fi } from './locales/fi'
+import { tr } from './locales/tr'
+import { id } from './locales/id'
+import { vi } from './locales/vi'
+import { th } from './locales/th'
+import { fil } from './locales/fil'
+import { hi } from './locales/hi'
+import { bn } from './locales/bn'
+import { mr } from './locales/mr'
+import { gu } from './locales/gu'
+import { ta } from './locales/ta'
+import { te } from './locales/te'
+import { kn } from './locales/kn'
+import { ml } from './locales/ml'
+import { bho } from './locales/bho'
+import { sw } from './locales/sw'
+import { am } from './locales/am'
+import { ha } from './locales/ha'
+import { ig } from './locales/ig'
+import { yo } from './locales/yo'
+import { ny } from './locales/ny'
+import { om } from './locales/om'
+import { rn } from './locales/rn'
+import { rw } from './locales/rw'
+import { so } from './locales/so'
+import { wo } from './locales/wo'
 
-export type Lang = 'en' | 'zh'
+export type { Messages } from './locales/en'
 
 /** What decided the language: the person's pin, the language Claude replies in, the locale, or nothing yet. */
 export type LangSource = 'pinned' | 'conversation' | 'locale' | 'default'
 
-type Verdict = 'hit' | 'partial' | 'miss'
-type Counts = { read: string; wrote: string; input: number; output: number }
+export type Script =
+  | 'latin'
+  | 'han'
+  | 'hangul'
+  | 'cyrillic'
+  | 'devanagari'
+  | 'bengali'
+  | 'gujarati'
+  | 'kannada'
+  | 'malayalam'
+  | 'tamil'
+  | 'telugu'
+  | 'thai'
+  | 'ethiopic'
 
-// Where the lifetime came from, in words: the contract keeps a short code.
-const SOURCE_EN: Record<Snapshot['ttlSource'], string> = {
-  env: 'environment',
-  observed: 'observed',
-  assumed: 'assumed',
+export type Locale = {
+  code: string
+  messages: Messages
+  pattern: RegExp
+  script: Script
+  marks?: RegExp
+  words?: readonly string[]
+  /** Text identifies the language, not this regional variant. */
+  variantOf?: string
+  /** A script can still say enough when its languages share their spelling. */
+  default?: boolean
 }
 
-// Every word the mod shows. A new language is one more catalog of this shape.
-const en = {
-  name: 'English',
+// More specific languages precede general ones; English stays first for stable code lists.
+export const LOCALES = [
+  {
+    code: 'en',
+    messages: en,
+    pattern: /^(?:en(?:[-_]|$)|english\b)/,
+    script: 'latin',
+    words: [
+      'the', 'and', 'but', 'if', 'by', 'from', 'with', 'are', 'was', 'were', 'that', 'its',
+      'you', 'your', 'they', 'their', 'them', 'this', 'these', 'those', 'which', 'would',
+      'should', 'will', 'been',
+    ],
+  },
+  {
+    code: 'zh-Hant',
+    messages: zhHant,
+    pattern: /^(?:zh[-_](?:hant|tw|hk|mo)(?:[-_.@]|$)|繁體|繁体|traditional chinese\b)/,
+    script: 'han',
+    // Modern Japanese uses different forms for these frequent technical characters.
+    marks: /[們說讀寫錄證讓擇參權續傳轉邊處觀碼鏈鑰關壓覽夠總應廣產嚴實驗擴歸雙點數體會學國來檢樣虛獨對隱雜變與齊區舉據屬遞餘觸發啟從將臺灣絕繪聯聲徑營稱裝聽屆閱檔佈佔譯鐵]/u,
+  },
+  {
+    code: 'zh',
+    messages: zh,
+    pattern: /^(?:zh(?![-_](?:hant|tw|hk|mo)(?:[-_.@]|$))(?:[-_]|$)|chinese\b|mandarin\b|中文|简体|汉语|漢語)/,
+    script: 'han',
+    // Exclude shared Japanese forms such as 国, 会, 学, 来, 体, 点 and 数.
+    marks: /[这们为说语话该请读记录认识证让设计选择权连续传转换载运进过还远达边处观现线级统组织结终络网页码键链错针钥问闭关开缓压缩复览仅够并总额费资优势输获误则负应库广产严业务实验扩归双层属递减损触发启软绝绘联营译铁]/u,
+    default: true,
+  },
+  {
+    code: 'ja',
+    messages: ja,
+    pattern: /^(?:ja(?:[-_]|$)|japanese\b|日本語)/,
+    script: 'han',
+    marks: /[\p{Script=Hiragana}\p{Script=Katakana}]/u,
+  },
+  {
+    code: 'ko',
+    messages: ko,
+    pattern: /^(?:ko(?:[-_]|$)|korean\b|한국어)/,
+    script: 'hangul',
+  },
+  {
+    code: 'es',
+    messages: es,
+    pattern: /^(?:es(?:[-_]es(?:[-_.@]|$)|[.@]|$)|spanish\s*\(spain\)|español\s*\(españa\))/,
+    script: 'latin',
+    variantOf: 'es-419',
+  },
+  {
+    code: 'es-419',
+    messages: es419,
+    pattern: /^(?:es[-_](?!es(?:[-_.@]|$))(?:[a-z]{2}|\d{3})(?:[-_.@]|$)|spanish\b|español\b|castellano\b)/,
+    script: 'latin',
+    words: [
+      'el', 'los', 'las', 'ellos', 'él', 'ella', 'unas', 'unos', 'eso', 'nuestro', 'sus', 'tus',
+      'quien', 'pero', 'cuando', 'aunque', 'donde', 'hasta', 'hacia', 'sin', 'según',
+      'también', 'hay', 'esto', 'están',
+    ],
+  },
+  {
+    code: 'fr',
+    messages: fr,
+    pattern: /^(?:fr(?:[-_]|$)|french\b|français)/,
+    script: 'latin',
+    words: [
+      'elle', 'leurs', 'au', 'ses', 'aux', 'une', 'ce', 'cette', 'ces', 'est', 'sont',
+      'était', 'être', 'avec', 'dans', 'pour', 'par', 'sans', 'pas', 'donc', 'nous',
+      'vous', 'ils', 'leur', 'aussi',
+    ],
+  },
+  {
+    code: 'de',
+    messages: de,
+    pattern: /^(?:de(?:[-_]|$)|german\b|deutsch\b)/,
+    script: 'latin',
+    words: [
+      'der', 'die', 'das', 'den', 'dem', 'auch', 'ein', 'eine', 'einen', 'einem', 'und',
+      'oder', 'aber', 'wenn', 'weil', 'mit', 'ohne', 'für', 'von', 'zum', 'zur',
+      'ist', 'sind', 'nicht', 'wird',
+    ],
+  },
+  {
+    code: 'pt-BR',
+    messages: ptBR,
+    pattern: /^(?:pt(?:[-_]|$)|portuguese\b|português)/,
+    script: 'latin',
+    words: [
+      'os', 'um', 'uma', 'uns', 'umas', 'na', 'dos', 'nas', 'pelo', 'pela', 'pelos',
+      'pelas', 'com', 'não', 'são', 'estão', 'foi', 'foram', 'você', 'vocês', 'seu',
+      'nós', 'seus', 'suas', 'também',
+    ],
+  },
+  {
+    code: 'it',
+    messages: it,
+    pattern: /^(?:it(?:[-_]|$)|italian\b|italiano\b)/,
+    script: 'latin',
+    words: [
+      'il', 'gli', 'dello', 'della', 'degli', 'delle', 'allo', 'alla', 'agli', 'questo',
+      'nel', 'nello', 'nella', 'negli', 'nelle', 'sul', 'sulla', 'sugli', 'sulle',
+      'che', 'sono', 'può', 'perché', 'quindi', 'oppure',
+    ],
+  },
+  {
+    code: 'ru',
+    messages: ru,
+    pattern: /^(?:ru(?:[-_]|$)|russian\b|русский)/,
+    script: 'cyrillic',
+    marks: /[ыэъё]/iu,
+    default: true,
+  },
+  {
+    code: 'uk',
+    messages: uk,
+    pattern: /^(?:uk(?:[-_]|$)|ukrainian\b|українська)/,
+    script: 'cyrillic',
+    marks: /[іїєґ]/iu,
+  },
+  {
+    code: 'nl',
+    messages: nl,
+    pattern: /^(?:nl(?:[-_]|$)|dutch\b|nederlands\b)/,
+    script: 'latin',
+    words: [
+      'het', 'een', 'niet', 'voor', 'van', 'dat', 'dit', 'deze', 'hij', 'zij', 'wij',
+      'jij', 'je', 'jouw', 'ons', 'onze', 'hun', 'als', 'maar', 'ook', 'nog',
+      'omdat', 'zonder', 'wanneer', 'bij', 'zich', 'moet', 'heeft',
+    ],
+  },
+  {
+    code: 'sv',
+    messages: sv,
+    pattern: /^(?:sv(?:[-_]|$)|swedish\b|svenska\b)/,
+    script: 'latin',
+    words: [
+      'inte', 'och', 'jag', 'är', 'av', 'från', 'vad', 'hur', 'också', 'bara', 'mycket',
+      'detta', 'dessa', 'vilket', 'vilka', 'någon', 'något', 'några', 'eftersom',
+      'innan', 'även', 'utan', 'än', 'här', 'där', 'alltså', 'redan',
+    ],
+  },
+  {
+    code: 'da',
+    messages: da,
+    pattern: /^(?:da(?:[-_]|$)|danish\b|dansk\b)/,
+    script: 'latin',
+    // Ikke, og, jeg and er are shared with Bokmål; prefer contrasting forms.
+    words: [
+      'af', 'hvad', 'meget', 'nogen', 'noget', 'nogle', 'inden', 'selvom', 'uden',
+      'jer', 'jeres', 'hendes', 'mig', 'dig', 'sig', 'hinanden', 'hvornår', 'sådan',
+      'sådanne', 'måske', 'især', 'op', 'også', 'kun', 'hvilket',
+    ],
+  },
+  {
+    code: 'nb',
+    messages: nb,
+    pattern: /^(?:(?:nb|no|nn)(?:[-_]|$)|norwegian\b|norsk\b)/,
+    script: 'latin',
+    words: [
+      'av', 'hva', 'bare', 'mye', 'noen', 'noe', 'dere', 'deres', 'hennes', 'uten',
+      'etter', 'enn', 'dersom', 'slik', 'seg', 'meg', 'deg', 'oss', 'vårt', 'våre',
+      'ditt', 'mitt', 'vært', 'ble', 'blitt',
+    ],
+  },
+  {
+    code: 'fi',
+    messages: fi,
+    pattern: /^(?:fi(?:[-_]|$)|finnish\b|suomi\b)/,
+    script: 'latin',
+    words: [
+      'ja', 'ei', 'että', 'kun', 'jos', 'niin', 'mutta', 'myös', 'vain', 'vielä', 'jo',
+      'nyt', 'sitten', 'ennen', 'jälkeen', 'ilman', 'kanssa', 'sinä', 'sinun', 'minä',
+      'nämä', 'tämä', 'ovat', 'oli', 'ole', 'joka', 'jotka',
+    ],
+  },
+  {
+    code: 'tr',
+    messages: tr,
+    pattern: /^(?:tr(?:[-_]|$)|turkish\b|türkçe)/,
+    script: 'latin',
+    words: [
+      've', 'bir', 'bu', 'şu', 'ben', 'biz', 'siz', 'onlar', 'için', 'ile', 'ama',
+      'fakat', 'çünkü', 'eğer', 'değil', 'daha', 'çok', 'gibi', 'kadar', 'sonra',
+      'önce', 'henüz', 'artık', 'ise', 'ancak',
+    ],
+  },
+  {
+    code: 'id',
+    messages: id,
+    pattern: /^(?:(?:id|in)(?:[-_]|$)|indonesian\b|bahasa indonesia\b)/,
+    script: 'latin',
+    words: [
+      'yang', 'dan', 'tidak', 'ini', 'itu', 'dengan', 'untuk', 'dari', 'pada', 'akan',
+      'sudah', 'belum', 'jika', 'tetapi', 'karena', 'agar', 'anda', 'saya', 'kami',
+      'kita', 'mereka', 'juga', 'hanya', 'masih', 'tanpa',
+    ],
+  },
+  {
+    code: 'vi',
+    messages: vi,
+    pattern: /^(?:vi(?:[-_]|$)|vietnamese\b|tiếng việt)/,
+    script: 'latin',
+    // Leave shared plain accents to words: French and Portuguese use them too.
+    marks: /[ăâđêôơưảạằắẳẵặầấẩẫậẻẽẹềếểễệỉĩịỏọồốổỗộờớởỡợủũụừứửữựỳỷỹỵ]/iu,
+    words: [
+      'và', 'của', 'là', 'không', 'được', 'đã', 'đang', 'sẽ', 'có', 'này', 'đó',
+      'những', 'các', 'một', 'cho', 'với', 'trong', 'khi', 'nếu', 'nhưng', 'vì',
+      'để', 'bạn', 'chúng', 'chỉ',
+    ],
+  },
+  {
+    code: 'th',
+    messages: th,
+    pattern: /^(?:th(?:[-_]|$)|thai\b|ไทย)/,
+    script: 'thai',
+  },
+  {
+    code: 'fil',
+    messages: fil,
+    pattern: /^(?:(?:fil|tl)(?:[-_]|$)|filipino\b|tagalog\b)/,
+    script: 'latin',
+    words: [
+      'ang', 'ng', 'mga', 'ito', 'iyon', 'hindi', 'ay', 'sa', 'kung', 'kapag', 'dahil',
+      'upang', 'habang', 'naman', 'rin', 'din', 'lang', 'lamang', 'mo', 'mong',
+      'iyong', 'natin', 'namin', 'ninyo', 'sila', 'siya',
+    ],
+  },
+  {
+    code: 'hi',
+    messages: hi,
+    pattern: /^(?:hi(?:[-_]|$)|hindi\b|हिन्दी|हिंदी)/,
+    script: 'devanagari',
+    default: true,
+    words: [
+      'है', 'हैं', 'और', 'नहीं', 'में', 'का', 'की', 'को', 'से', 'पर', 'यह', 'वह',
+      'आप', 'आपका', 'आपकी', 'अपने', 'इस', 'उस', 'ये', 'वे', 'लिए', 'लेकिन',
+      'यदि', 'तो', 'कि',
+    ],
+  },
+  {
+    code: 'bn',
+    messages: bn,
+    pattern: /^(?:bn(?:[-_]|$)|bengali\b|bangla\b|বাংলা)/,
+    script: 'bengali',
+  },
+  {
+    code: 'mr',
+    messages: mr,
+    pattern: /^(?:mr(?:[-_]|$)|marathi\b|मराठी)/,
+    script: 'devanagari',
+    words: [
+      'आहे', 'आहेत', 'आणि', 'नाही', 'मध्ये', 'च्या', 'मुळे', 'पण', 'म्हणून',
+      'जर', 'तर', 'हे', 'ही', 'ते', 'तो', 'त्या', 'त्याचे', 'तुम्ही', 'तुमचे',
+      'आपण', 'आम्ही', 'मी', 'माझे', 'किंवा', 'असे',
+    ],
+  },
+  {
+    code: 'gu',
+    messages: gu,
+    pattern: /^(?:gu(?:[-_]|$)|gujarati\b|ગુજરાતી)/,
+    script: 'gujarati',
+  },
+  {
+    code: 'ta',
+    messages: ta,
+    pattern: /^(?:ta(?:[-_]|$)|tamil\b|தமிழ்)/,
+    script: 'tamil',
+  },
+  {
+    code: 'te',
+    messages: te,
+    pattern: /^(?:te(?:[-_]|$)|telugu\b|తెలుగు)/,
+    script: 'telugu',
+  },
+  {
+    code: 'kn',
+    messages: kn,
+    pattern: /^(?:kn(?:[-_]|$)|kannada\b|ಕನ್ನಡ)/,
+    script: 'kannada',
+  },
+  {
+    code: 'ml',
+    messages: ml,
+    pattern: /^(?:ml(?:[-_]|$)|malayalam\b|മലയാളം)/,
+    script: 'malayalam',
+  },
+  {
+    code: 'bho',
+    messages: bho,
+    pattern: /^(?:bho(?:[-_]|$)|bhojpuri\b|भोजपुरी)/,
+    script: 'devanagari',
+    words: [
+      'बा', 'बाड़े', 'बानी', 'बाड़ऽ', 'बाड़न', 'रहल', 'रहली', 'हमनी', 'आ', 'भा',
+      'रउआ', 'रउरा', 'ओकर', 'एकर', 'कवन', 'काहे', 'कइसन', 'नइखे', 'नाहीं',
+      'हई', 'होखे', 'संगे', 'खातिर', 'अइसन', 'तइसन', 'ओह', 'एह', 'त', 'तबे',
+    ],
+  },
+  {
+    code: 'sw',
+    messages: sw,
+    pattern: /^(?:sw(?:[-_]|$)|swahili\b|kiswahili\b)/,
+    script: 'latin',
+    // Inflected auxiliaries are common in replies; na, ni, kwa and possessives overlap with neighbours.
+    marks: /(?<![\p{L}\p{M}])(?:nime|nina|nita|tume|tuna|una|uta|haija|haiku|yame|ime)(?=\p{L})/iu,
+    words: [
+      'ikiwa', 'lakini', 'hivyo', 'kwamba', 'ambayo', 'ambazo', 'ambaye', 'hii', 'hiyo',
+      'hizi', 'hizo', 'wewe', 'wetu', 'yetu', 'kwenye', 'kutoka', 'baada', 'kabla',
+      'bado', 'sasa', 'pia', 'yote', 'unaweza', 'naweza', 'lilikuwa', 'ukitaka',
+    ],
+  },
+  {
+    code: 'am',
+    messages: am,
+    pattern: /^(?:am(?:[-_]|$)|amharic\b|አማርኛ)/,
+    script: 'ethiopic',
+  },
+  {
+    code: 'ha',
+    messages: ha,
+    pattern: /^(?:ha(?:[-_]|$)|hausa\b)/,
+    script: 'latin',
+    marks: /[ɓɗƙƴ]/iu,
+    words: [
+      'amma', 'idan', 'saboda', 'kuma', 'wannan', 'waɗannan', 'zai', 'iya',
+      'wanda', 'wadda', 'waɗanda', 'kowane', 'kowace', 'kowa', 'wani', 'wata', 'wasu',
+      'yanzu', 'tukuna', 'tsakanin', 'bayan', 'kafin', 'cikin', 'daga', 'ɗin', 'babu', 'duk', 'kawai',
+    ],
+  },
+  {
+    code: 'ig',
+    messages: ig,
+    pattern: /^(?:ig(?:[-_]|$)|igbo\b)/,
+    script: 'latin',
+    // Vietnamese shares the dotted vowels. The nwe auxiliary and hyphenated ga- future help separate it.
+    marks: /[ịọụṅ]|[iou]\u0323|n\u0307|nwe|(?<![\p{L}\p{M}])ga[-‐‑]/iu,
+    words: [
+      'anyị', 'onye', 'unu', 'ụnụ', 'gị', 'ụfọdụ', 'nke', 'ọ', 'bụ', 'abụghị',
+      'dị', 'adịghị', 'mgbe', 'tupu', 'ahụ', 'ugbu', 'nwere', 'nwekwara', 'ike',
+      'karịa', 'enweghị', 'agaghị', 'gaghị', 'ebe', 'ọzọ', 'ime', 'naanị', 'dịka',
+      'kemgbe', 'agbanyeghị', 'ị',
+    ],
+  },
+  {
+    code: 'yo',
+    messages: yo,
+    pattern: /^(?:yo(?:[-_]|$)|yoruba\b|yorùbá(?:\s|$))/,
+    script: 'latin',
+    marks: /[ẹọṣàáèéìíòóùú]|[aeiouẹọ][\u0300\u0301]|[eos]\u0323/iu,
+    words: [
+      'àwọn', 'ní', 'tí', 'sí', 'fún', 'pẹ̀lú', 'ṣùgbọ́n', 'nítorí', 'bí', 'bá',
+      'yóò', 'kò', 'kì', 'ń', 'ó', 'wọ́n', 'ẹ', 'yín', 'wa', 'rẹ̀', 'èyí', 'yìí',
+      'nínú', 'lẹ́yìn', 'ṣáájú', 'ṣe', 'lè', 'náà', 'báyìí', 'tó', 'tún', 'kí',
+    ],
+  },
+  {
+    code: 'ny',
+    messages: ny,
+    pattern: /^(?:ny(?:[-_]|$)|chichewa\b|chinyanja\b|nyanja\b)/,
+    script: 'latin',
+    words: [
+      'koma', 'ngati', 'chifukwa', 'choncho', 'kapena', 'kuti', 'pamene', 'pambuyo',
+      'ndipo', 'momwe', 'mungathe', 'ilili', 'tsopano', 'panobe', 'komanso', 'kokha',
+      'zonse', 'onse', 'inu', 'ine', 'ife', 'iwo', 'wanu', 'yanu', 'yathu', 'yawo',
+      'yomwe', 'omwe', 'palibe', 'ngakhale', 'zimene',
+    ],
+  },
+  {
+    code: 'om',
+    messages: om,
+    pattern: /^(?:om(?:[-_]|$)|oromo\b|afaan oromoo\b)/,
+    script: 'latin',
+    // Perfect -eera and ability -eessa are frequent; unrestricted doubled vowels would also claim Dutch.
+    marks: /\p{L}+(?:eera|eessa)(?![\p{L}\p{M}])/iu,
+    words: [
+      'fi', 'yookaan', 'garuu', 'yoo', 'waan', 'akka', 'kana', 'sana', 'miti',
+      'ati', 'isin', 'inni', 'isheen', 'isaan', 'nuti', 'kee', 'keessan', 'isaa',
+      'ishee', 'keessa', 'keessatti', 'irraa', 'booda', 'itti', 'isaas', 'ammallee',
+    ],
+  },
+  {
+    code: 'rn',
+    messages: rn,
+    pattern: /^(?:rn(?:[-_]|$)|kirundi\b|ikirundi\b|rundi\b)/,
+    script: 'latin',
+    // Shared auxiliaries count for both. Inflected ivy-/ntivy-, shasha and izokw- supply the contrast.
+    marks: /(?<![\p{L}\p{M}])(?:ivy|ntivy)(?=[aeiou])|shasha|izokw/iu,
+    words: [
+      'canke', 'nimba', 'ivyo', 'ico', 'ca', 'vyo', 'vyose', 'vyinshi',
+      'vyonyene', 'vyari', 'vyoba', 'vyacu', 'vyanyu', 'vyabo', 'vyayo', 'cacu',
+      'canyu', 'rero', 'haciye', 'gushika', 'ubu', 'uko', 'imeze', 'irakora', 'ntikora', 'ari', 'ubwo',
+    ],
+  },
+  {
+    code: 'rw',
+    messages: rw,
+    pattern: /^(?:rw(?:[-_]|$)|kinyarwanda\b|ikinyarwanda\b)/,
+    script: 'latin',
+    marks: /(?<![\p{L}\p{M}])(?:iby|ntiby|icy|cy)(?=[aeiou])|shy/iu,
+    words: [
+      'cyangwa', 'niba', 'ibyo', 'byose', 'icyo', 'byo', 'cyo',
+      'byaba', 'byari', 'byacu', 'byinshi', 'byonyine', 'cyane', 'ubwo', 'nyuma',
+      'mbere', 'bityo', 'kuko', 'ndetse', 'ntabwo', 'ntacyo', 'ubu', 'uko', 'imeze',
+      'irakora', 'ntikora', 'ari',
+    ],
+  },
+  {
+    code: 'so',
+    messages: so,
+    pattern: /^(?:so(?:[-_]|$)|somali\b|soomaali\b)/,
+    script: 'latin',
+    words: [
+      'waxaa', 'waxay', 'wuxuu', 'waxaan', 'waxaad', 'waxaana', 'waxaadna', 'wuu',
+      'sii', 'doonaa', 'kartaa', 'waa', 'haddii', 'laakiin', 'sidaas',
+      'sida', 'sababtoo', 'marka', 'markuu', 'markaas', 'hadda', 'weli', 'kadib',
+      'hor', 'gudahood', 'dhammaan', 'keliya', 'iyadoo', 'isaga', 'iyada', 'iyaga', 'adiga',
+    ],
+  },
+  {
+    code: 'wo',
+    messages: wo,
+    pattern: /^(?:wo(?:[-_]|$)|wolof\b)/,
+    script: 'latin',
+    words: [
+      'ñu', 'ñuy', 'ñi', 'ñoom', 'ñun', 'yow', 'yéen', 'nga', 'ngay', 'naa',
+      'ngir', 'ak', 'ci', 'bi', 'wi', 'yi', 'benn', 'bépp', 'yépp', 'walla',
+      'waaye', 'kon', 'gannaaw', 'bala', 'dina', 'dafa', 'dafay', 'mën', 'léegi', 'rekk', 'loolu',
+    ],
+  },
+] as const satisfies readonly Locale[]
 
-  bandCold: 'cold',
-  bandWarmDetail: (size: string, cost: string) =>
-    `${size} cached${cost && ` · ${cost} to rebuild if it lapses`}`,
-  bandAutoDetail: (size: string, used: number, budget: number) =>
-    `${size} cached · keeping warm ${used}/${budget}`,
-  bandColdDetail: (size: string, cost: string) => `next turn rebuilds ${size}${cost && ` for ≈${cost}`}`,
+export type Lang = (typeof LOCALES)[number]['code']
+export const LANGS: Lang[] = LOCALES.map(locale => locale.code)
+export const MESSAGES: Record<Lang, Messages> = Object.fromEntries(
+  LOCALES.map(locale => [locale.code, locale.messages]),
+) as Record<Lang, Messages>
 
-  cmdStatus: 'Show the prompt cache countdown and what a lapse would cost',
-  cmdPing: 'Send one keep-alive that refreshes the prompt cache',
-  cmdAuto: 'Keep the prompt cache warm while idle, within a ping budget',
-  cmdAutoHint: '[on|off] [max pings]',
-  cmdLang: 'Set the language cache-refresher speaks',
-
-  expiredAgo: (gap: string) => `expired ${gap} ago`,
-  coldPing: 'a ping found it cold',
-  coldModel: (model: string) => `the model changed to ${model}`,
-
-  pingNothing: 'Nothing is cached for this conversation yet, so there is nothing to keep alive.',
-  pingBusy: 'A ping is already on its way.',
-  pingCold: (why: string, size: string) =>
-    `Not sent: the cache is cold (${why}). A ping now would be billed on all ${size} tokens instead of refreshing them. Run /cache-ping force to send it anyway.`,
-  pingNoFork: 'Not sent: the main conversation has no response to fork from yet.',
-  pingApiError: (error: string, status: number | null) =>
-    `The ping failed with an API error (${error}, status ${status ?? 'none'}); the cache was left as it was.`,
-  pingCut: 'The ping was cut before the API answered; the cache was left as it was.',
-  counts: (c: Counts) => `read ${c.read}, wrote ${c.wrote}, ${c.input} in, ${c.output} out`,
-  atListPrice: (usd: string) => ` ≈${usd} at list price.`,
-  pingHit: (counts: string, cost: string, ttl: Ttl) => `Ping hit: ${counts}.${cost} The countdown restarts at ${ttl}.`,
-  pingRewrote: (counts: string, cost: string) =>
-    `Ping missed and re-wrote the cache: ${counts}.${cost} The prefix had already lapsed.`,
-  pingMissed: (counts: string, cost: string) =>
-    `Ping missed: ${counts}.${cost} The cache was already cold and stays cold.`,
-  autoLog: (n: number, budget: number, text: string) => `auto keep-alive ${n}/${budget}. ${text}`,
-  autoMissToast: 'The auto keep-alive did not hit the cache; see /cache-status',
-
-  reportNothing: 'Prompt cache: nothing tracked yet. The countdown starts with the next response.',
-  reportWarm: (left: string) => `Prompt cache: warm, ${left} left.`,
-  reportCold: (why: string) => `Prompt cache: cold (${why}).`,
-  reportTtl: (ttl: Ttl, source: Snapshot['ttlSource']) => `  ttl       ${ttl} (${SOURCE_EN[source]})`,
-  reportCached: (size: string, model: string, by: Snapshot['touchedBy'], since: string) =>
-    `  cached    ${size} tokens on ${model}, last touched by a ${by} ${since} ago`,
-  reportNoPrice: '  costs     no list price known for this model',
-  reportLapse: (lapse: string, rewrite: string) => `  a lapse   +${lapse} over a hit (rewrite ${rewrite})`,
-  reportPing: (ping: string, isMeasured: boolean, max: number) =>
-    `  one ping  ${ping} (overhead ${isMeasured ? 'measured' : 'estimated'}), so at most ${max} pings beat one lapse`,
-  reportRule: (ttl: Ttl, percent: string) =>
-    `  rule      keep pinging while the chance of a return within the next ${ttl} is above ${percent}%`,
-  reportLastPing: (ago: string, counts: string) => `  last ping ${ago} ago: ${counts}`,
-  reportTouches: 'Recent touches:',
-  reportTouch: (
-    kind: 'turn' | 'ping',
-    gap: string,
-    prevBy: Snapshot['touchedBy'],
-    ttl: Ttl,
-    verdict: Verdict,
-    read: string,
-    cached: string,
-  ) => `  ${kind} ${gap} after a ${prevBy} (${ttl}): ${verdict}, read ${read} of ${cached}`,
-  reportFooter: 'Costs are API list prices; on a subscription they stand for plan usage, not a bill.',
-
-  autoHeader: 'Auto keep-alive:',
-  autoOff: '  auto      off (/cache-auto on to keep the cache warm while idle)',
-  autoWaiting: (cap: number) => `  auto      on, at most ${cap} pings per idle stretch; waiting for the first response`,
-  autoOn: (used: number, budget: number, cap: number, next: string) =>
-    `  auto      on, ${used} of ${budget} pings used since the last turn (cap ${cap}); next ping ${next}`,
-  nextCold: 'none: the cache is cold',
-  nextSpent: 'none: the budget for this idle stretch is spent',
-  nextIn: (time: string) => `in ${time}`,
-  nextNow: 'due now',
-  autoPings: (state: string) => `  pings     ${state}`,
-  extendsYes: (ttl: Ttl) => `confirmed: a ping restarts the full ${ttl}`,
-  extendsNo: 'not seen: the last evidence was a miss after a ping, so auto sends one ping per idle stretch',
-  extendsUnknown: (ttl: Ttl) =>
-    `unconfirmed: auto sends one ping per idle stretch until a ping is seen to restart the full ${ttl}`,
-  autoNote: '  note      pings go out only while this app is running and the machine is awake, and they spend usage',
-  autoUsage: (max: number) => `Usage: /cache-auto [on|off] [max pings per idle stretch, 1 to ${max}]`,
-
-  details: 'details ›',
-  cmdPanel: 'Open the prompt cache panel',
-  paneTitle: 'Prompt cache',
-  paneNothing: 'Nothing cached yet. The countdown starts with the next response.',
-  heroLeft: (size: string) => `left · ${size} tokens cached`,
-  heroAuto: (time: string, span: string) =>
-    `${time ? `first ping in ${time}` : 'pinging now'} · holds ~${span}`,
-  heroCold: (size: string, cost: string) => `next turn rebuilds ${size}${cost && ` for ≈${cost}`}`,
-  heroPinging: 'keep-alive ping on its way…',
-  rowLapse: 'let it lapse',
-  rowPing: 'one ping',
-  breakEven: (max: number) => `${max} pings ≈ one lapse`,
-  breakEvenRule: (max: number, percent: string) =>
-    `${max} pings ≈ one lapse · worth it above a ${percent}% chance you return`,
-  noPrice: 'No list price known for this model',
-  autoTitle: 'Keep it warm while away',
-  btnOn: 'Turn on',
-  btnOff: 'Turn off',
-  autoPlanOff: (left: number, span: string) => `up to ${left} ${left === 1 ? 'ping' : 'pings'}${span && ` · ~${span}`}`,
-  autoPlanOn: (used: number, budget: number) => `${used}/${budget} used`,
-  autoTrialOff: (cap: number) => `1 ping first, then up to ${cap}`,
-  autoTrialOn: (used: number, cap: number) => `trial ${used}/1, then up to ${cap}`,
-  autoSpent: 'ping budget spent until your next message',
-  historyAll: (n: number) => (n === 1 ? 'last touch hit' : `last ${n} all hit`),
-  historySome: (n: number, misses: number) => `${misses} of last ${n} missed`,
-  historyEmpty: 'no history yet',
-  btnPing: 'Ping now',
-  listPrice: 'amounts at API list price',
-  priceNote: (cap: string) => `at most ${cap} · amounts at API list price`,
-
-  langNow: (name: string, source: LangSource) =>
-    `Language: ${name} (${{ pinned: 'pinned', conversation: 'following the conversation', locale: 'from the system locale', default: 'default, nothing to go on yet' }[source]}).`,
-  langUsage: 'Usage: /cache-lang [auto|en|zh]',
+function codeOf(hint: string): string {
+  return hint.replace(/@.*$/, '').replace(/\.utf-8$/, '').replace(/_/g, '-')
 }
-
-export type Messages = typeof en
-
-const SOURCE_ZH: Record<Snapshot['ttlSource'], string> = {
-  env: '环境变量',
-  observed: '实测',
-  assumed: '推断',
-}
-const BY_ZH: Record<Snapshot['touchedBy'], string> = { turn: '对话', ping: '保活', resume: '恢复会话' }
-const VERDICT_ZH: Record<Verdict, string> = { hit: '命中', partial: '部分命中', miss: '未命中' }
-
-const zh: Messages = {
-  name: '中文',
-
-  bandCold: '已冷',
-  bandWarmDetail: (size, cost) => `已缓存 ${size}${cost && ` · 过期重建 ${cost}`}`,
-  bandAutoDetail: (size, used, budget) => `已缓存 ${size} · 自动保活 ${used}/${budget}`,
-  bandColdDetail: (size, cost) => `下一轮重建 ${size}${cost && `，约 ${cost}`}`,
-
-  cmdStatus: '显示提示缓存倒计时和过期代价',
-  cmdPing: '发送一次保活，刷新提示缓存',
-  cmdAuto: '空闲时在预算内自动保持缓存有效',
-  cmdAutoHint: '[on|off] [最大次数]',
-  cmdLang: '设置 cache-refresher 的显示语言',
-
-  expiredAgo: gap => `已过期 ${gap}`,
-  coldPing: '保活时发现已冷',
-  coldModel: model => `模型已切换为 ${model}`,
-
-  pingNothing: '这个对话还没有缓存，无需保活。',
-  pingBusy: '已有一次保活正在发送。',
-  pingCold: (why, size) =>
-    `未发送：缓存已冷（${why}）。现在保活会对全部 ${size} token 重新计费，而不是续期。如仍要发送，请运行 /cache-ping force。`,
-  pingNoFork: '未发送：主对话还没有可供分叉的回复。',
-  pingApiError: (error, status) => `保活因 API 错误失败（${error}，状态 ${status ?? '无'}）；缓存保持原状。`,
-  pingCut: '保活在 API 响应前被中断；缓存保持原状。',
-  counts: c => `读取 ${c.read}，写入 ${c.wrote}，输入 ${c.input}，输出 ${c.output}`,
-  atListPrice: usd => `按标价约 ${usd}。`,
-  pingHit: (counts, cost, ttl) => `保活命中：${counts}。${cost}倒计时从 ${ttl} 重新开始。`,
-  pingRewrote: (counts, cost) => `保活未命中，并重写了缓存：${counts}。${cost}缓存此前已过期。`,
-  pingMissed: (counts, cost) => `保活未命中：${counts}。${cost}缓存此前已冷，现在仍是冷的。`,
-  autoLog: (n, budget, text) => `自动保活 ${n}/${budget}。${text}`,
-  autoMissToast: '自动保活未命中缓存，详见 /cache-status',
-
-  reportNothing: '提示缓存：尚无数据，下一次回复后开始倒计时。',
-  reportWarm: left => `提示缓存：有效，还剩 ${left}。`,
-  reportCold: why => `提示缓存：已冷（${why}）。`,
-  reportTtl: (ttl, source) => `  时效：${ttl}（${SOURCE_ZH[source]}）`,
-  reportCached: (size, model, by, since) => `  已缓存：${size} token，模型 ${model}，${since} 前由${BY_ZH[by]}触达`,
-  reportNoPrice: '  费用：该模型没有已知标价',
-  reportLapse: (lapse, rewrite) => `  过期代价：比命中多付 ${lapse}（重写 ${rewrite}）`,
-  reportPing: (ping, isMeasured, max) =>
-    `  单次保活：${ping}（开销为${isMeasured ? '实测' : '估算'}值），最多 ${max} 次保活仍比一次过期划算`,
-  reportRule: (ttl, percent) => `  规则：只要你在接下来 ${ttl} 内回来的概率高于 ${percent}%，就值得继续保活`,
-  reportLastPing: (ago, counts) => `  上次保活：${ago} 前，${counts}`,
-  reportTouches: '最近的缓存触达：',
-  reportTouch: (kind, gap, prevBy, ttl, verdict, read, cached) =>
-    `  ${BY_ZH[kind]}，距上次${BY_ZH[prevBy]} ${gap}（${ttl}）：${VERDICT_ZH[verdict]}，读取 ${read} / ${cached}`,
-  reportFooter: '费用按 API 标价计算；订阅用户对应的是套餐额度消耗，不是账单。',
-
-  autoHeader: '自动保活设置：',
-  autoOff: '  自动保活：关闭（/cache-auto on 可在空闲时保持缓存有效）',
-  autoWaiting: cap => `  自动保活：开启，每段空闲最多 ${cap} 次；等待第一次回复`,
-  autoOn: (used, budget, cap, next) =>
-    `  自动保活：开启，上次对话后已用 ${used}/${budget} 次（上限 ${cap}）；下次保活：${next}`,
-  nextCold: '无（缓存已冷）',
-  nextSpent: '无（本段空闲的预算已用完）',
-  nextIn: time => `${time} 后`,
-  nextNow: '即将发送',
-  autoPings: state => `  保活效果：${state}`,
-  extendsYes: ttl => `已确认，一次保活可续满 ${ttl}`,
-  extendsNo: '未确认，最近一次证据是保活后未命中，所以自动保活每段空闲只发一次',
-  extendsUnknown: ttl => `未确认，在看到保活能续满 ${ttl} 之前，自动保活每段空闲只发一次`,
-  autoNote: '  注意：只有应用在运行且电脑未休眠时才会发送保活，并且会消耗用量',
-  autoUsage: max => `用法：/cache-auto [on|off] [每段空闲的最大保活次数，1 到 ${max}]`,
-
-  details: '详情 ›',
-  cmdPanel: '打开提示缓存面板',
-  paneTitle: '提示缓存',
-  paneNothing: '还没有缓存，下一次回复后开始倒计时。',
-  heroLeft: size => `后失效 · 已缓存 ${size} token`,
-  heroAuto: (time, span) => `${time ? `${time} 后自动保活` : '即将保活'} · 可保持约 ${span}`,
-  heroCold: (size, cost) => `下一轮重建 ${size}${cost && `，约 ${cost}`}`,
-  heroPinging: '正在保活…',
-  rowLapse: '任其过期',
-  rowPing: '保活一次',
-  breakEven: max => `${max} 次保活 ≈ 一次过期`,
-  breakEvenRule: (max, percent) => `${max} 次保活 ≈ 一次过期 · 回来的概率高于 ${percent}% 就值得`,
-  noPrice: '该模型没有已知标价',
-  autoTitle: '离开时保持缓存',
-  btnOn: '开启',
-  btnOff: '关闭',
-  autoPlanOff: (left, span) => `最多 ${left} 次${span && ` · 约 ${span}`}`,
-  autoPlanOn: (used, budget) => `已用 ${used}/${budget} 次`,
-  autoTrialOff: cap => `先试 1 次，有效后最多 ${cap} 次`,
-  autoTrialOn: (used, cap) => `已试 ${used}/1 次，有效后最多 ${cap} 次`,
-  autoSpent: '保活次数已用完，等你下一条消息后重置',
-  historyAll: n => (n === 1 ? '最近 1 次命中' : `最近 ${n} 次全部命中`),
-  historySome: (n, misses) => `最近 ${n} 次有 ${misses} 次未命中`,
-  historyEmpty: '暂无记录',
-  btnPing: '立即保活',
-  listPrice: '金额按 API 标价折算',
-  priceNote: cap => `最多花费 ${cap} · 金额按 API 标价折算`,
-
-  langNow: (name, source) =>
-    `显示语言：${name}（${{ pinned: '已固定', conversation: '跟随对话语言', locale: '来自系统语言环境', default: '默认，暂时无从判断' }[source]}）。`,
-  langUsage: '用法：/cache-lang [auto|en|zh]',
-}
-
-export const MESSAGES: Record<Lang, Messages> = { en, zh }
 
 /** The catalog a language hint names: a locale (`zh_CN.UTF-8`), a code, or a language's name. */
 export function langFrom(hint: unknown): Lang | null {
   if (typeof hint !== 'string') return null
   const lower = hint.trim().toLowerCase()
-  if (/^(zh|chinese|mandarin|中文|简体|繁體|汉语|漢語)/.test(lower)) return 'zh'
-  if (/^(en|english)/.test(lower)) return 'en'
+  const exact = LOCALES.find(locale => codeOf(locale.code.toLowerCase()) === codeOf(lower))
+  if (exact) return exact.code
 
-  return null
+  return LOCALES.find(locale => locale.pattern.test(lower))?.code ?? null
 }

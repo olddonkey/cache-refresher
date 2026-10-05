@@ -2,8 +2,9 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, ModelUsage, Register } from 'claude-code'
 
 import type { Snapshot, Ttl } from '../types'
+import { detect, follow } from './detect'
 import { PING_MARGIN_MS, TTL_MS, WRITE_MULTIPLIER, fmtRemaining, fmtTokens, fmtUsd, priceOf } from './economics'
-import { MESSAGES, langFrom } from './messages'
+import { LANGS, MESSAGES, langFrom } from './messages'
 import type { Lang, LangSource } from './messages'
 import {
   COLD_MODEL,
@@ -19,7 +20,7 @@ import {
 } from './model'
 import type { Extension, Observation, Verdict, View } from './model'
 import { autoLines, report } from './report'
-import { ENTER_MS, REFILL_MS, bandView, paneView } from './views'
+import { bandView, paneView } from './views'
 import type { Motion } from './views'
 
 const DEFAULT_CAP = 12
@@ -41,8 +42,6 @@ const MAX_OBSERVATIONS = 100
 const EXTENDS = 'pingExtends'
 const LANG = 'lang'
 const HEARD = 'langHeard'
-// A reply's weight in the language tally halves with each reply after it.
-const HEARD_DECAY = 0.5
 
 type TtlChoice = Pick<Snapshot, 'ttl' | 'ttlSource'>
 
@@ -56,9 +55,9 @@ let extension: Extension | undefined
 let observed: Observation[] | undefined
 // The language in force and what decided it; undefined until first read.
 let spoken: { lang: Lang; source: LangSource } | undefined
-// Letters of each kind in Claude's recent replies, and the language they last said.
-let heard = { cjk: 0, latin: 0 }
-let heardLang: Lang | undefined
+// The languages of Claude's recent replies, and the store's last followed language until first read.
+let heard: Record<string, number> = {}
+let heardLang: Lang | null | undefined
 let isPinging = false
 // Main-thread requests under way: each touched the cache as it started.
 let inFlight = 0
@@ -72,6 +71,11 @@ let titledIn: Lang | undefined
 let openedAt: number | undefined
 // The touch that last refilled the cache, and the share of its lifetime left before it: the ring sweeps back from there.
 let refill: { at: number; from: number } | undefined
+// A survey unmounts the band's frame; its next appearance needs a fresh timeline.
+let bandHidden = false
+let bandEpoch = 0
+// Old frames can leave after their replacements have had time to load.
+const bufferEnds = new Set<number>()
 
 function isOn(value: string | undefined): boolean {
   return value === '1' || value === 'true'
@@ -79,9 +83,10 @@ function isOn(value: string | undefined): boolean {
 
 // The person's own choice, then the language Claude last replied in, then the locale.
 async function speaking($: EngineInterface): Promise<{ lang: Lang; source: LangSource }> {
+  if (heardLang === undefined) heardLang = langFrom(await $.store.get(HEARD))
   if (spoken === undefined) {
     const pinned = langFrom(await $.store.get(LANG))
-    const fromTalk = pinned === null ? langFrom(await $.store.get(HEARD)) : null
+    const fromTalk = pinned === null ? heardLang : null
     const fromLocale =
       pinned === null && fromTalk === null
         ? (langFrom(await $.env.get('LC_ALL')) ?? langFrom(await $.env.get('LANG')))
@@ -104,23 +109,16 @@ async function speaking($: EngineInterface): Promise<{ lang: Lang; source: LangS
  * Code says nothing about a language, and a reply with too few letters says too little.
  */
 async function hear($: EngineInterface, answer: string): Promise<void> {
-  const prose = answer.replace(/```[\s\S]*?```/g, ' ').replace(/`[^`\n]*`/g, ' ')
-  let cjk = 0
-  let latin = 0
-  for (const char of prose.slice(0, 600)) {
-    const code = char.codePointAt(0) ?? 0
-    if (code >= 0x4e00 && code <= 0x9fff) cjk += 1
-    else if ((code >= 0x41 && code <= 0x5a) || (code >= 0x61 && code <= 0x7a)) latin += 1
-  }
-  if (cjk + latin < 40) return
-  heard = { cjk: heard.cjk * HEARD_DECAY + cjk, latin: heard.latin * HEARD_DECAY + latin }
-  // Chinese text about code carries file names and commands in Latin letters, so a modest share already says Chinese.
-  const lang: Lang = heard.cjk >= 20 && heard.cjk / (heard.cjk + heard.latin) > 0.15 ? 'zh' : 'en'
+  const found = detect(answer)
+  if (found === null) return
+  const now = await speaking($)
+  const followed = follow(heard, found, heardLang ?? now.lang)
+  heard = followed.tally
+  const { lang } = followed
   if (lang !== heardLang) {
     heardLang = lang
     await $.store.set(HEARD, lang)
   }
-  const now = await speaking($)
   if (now.source === 'pinned' || (now.source === 'conversation' && now.lang === lang)) return
   spoken = { lang, source: 'conversation' }
   // The band's words change with the language even while the clock stands still.
@@ -137,11 +135,11 @@ async function setLang($: EngineInterface, word: string): Promise<boolean> {
   if (word === 'auto') {
     await $.store.delete(LANG)
     spoken = undefined
-  } else if (word === 'en' || word === 'zh') {
-    await $.store.set(LANG, word)
-    spoken = { lang: word, source: 'pinned' }
   } else {
-    return false
+    const lang = langFrom(word)
+    if (lang === null) return false
+    await $.store.set(LANG, lang)
+    spoken = { lang, source: 'pinned' }
   }
   // The band's words change with the language even while the clock stands still.
   lastHead = ''
@@ -217,14 +215,14 @@ async function viewOf($: EngineInterface): Promise<View> {
 /** What the drawings should be moving at this moment. */
 async function motionOf($: EngineInterface): Promise<Motion> {
   const now = await $.clock.now()
-  const sinceOpen = openedAt === undefined ? null : now - openedAt
-  const sinceRefill = refill === undefined ? null : now - refill.at
 
   return {
     now,
-    sinceOpen: sinceOpen !== null && sinceOpen < ENTER_MS ? sinceOpen : null,
-    refill: refill !== undefined && sinceRefill !== null && sinceRefill < REFILL_MS ? { since: sinceRefill, from: refill.from } : null,
+    openedAt: openedAt ?? null,
+    refill: refill ?? null,
     isPinging,
+    bandEpoch,
+    onBufferEnd: at => { bufferEnds.add(at) },
   }
 }
 
@@ -405,9 +403,16 @@ export const register: Register = on => {
       }
       const held = await read($, snap)
       const now = await $.clock.now()
+      let bufferEnded = false
+      for (const at of bufferEnds) {
+        if (now >= at) {
+          bufferEnds.delete(at)
+          bufferEnded = true
+        }
+      }
       // The countdown: redraw only when its words change.
       const head = held === null ? '' : remainingOf(held, now) > 0 ? fmtRemaining(remainingOf(held, now)) : 'cold'
-      if (head !== lastHead) {
+      if (head !== lastHead || bufferEnded) {
         lastHead = head
         $.ui.invalidate('ui.render')
       }
@@ -437,7 +442,7 @@ export const register: Register = on => {
     await $.command.register({
       name: 'cache-lang',
       description: m.cmdLang,
-      argumentHint: '[auto|en|zh]',
+      argumentHint: m.cmdLangHint,
       immediate: true,
     })
 
@@ -533,7 +538,7 @@ export const register: Register = on => {
 
   on('command.run', { command: 'cache-lang' }, async ($, e) => {
     const word = e.args.trim().toLowerCase()
-    if (word !== '' && !(await setLang($, word))) return { text: MESSAGES[await langOf($)].langUsage }
+    if (word !== '' && !(await setLang($, word))) return { text: MESSAGES[await langOf($)].langUsage(LANGS.join(', ')) }
     const now = await speaking($)
     const m = MESSAGES[now.lang]
 
@@ -543,7 +548,16 @@ export const register: Register = on => {
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const view = await viewOf($)
     const { held } = view
-    if (e.props.hasSurvey || !isTracked(held)) return next(e)
+    if (e.props.hasSurvey) {
+      bandHidden = true
+
+      return next(e)
+    }
+    if (!isTracked(held)) return next(e)
+    if (bandHidden) {
+      bandHidden = false
+      bandEpoch += 1
+    }
     const m = MESSAGES[await langOf($)]
     const beneath = await next(e)
     const els = $.ui.resolve(e)
