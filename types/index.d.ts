@@ -30,7 +30,7 @@ export type Snapshot = {
   lastPing: PingUsage | null
 }
 
-/** The auto keep-alive switch, per session: off until the person turns it on. */
+/** The auto keep-alive switch, per session: as `/cache-auto default` left it, else off until the person turns it on. */
 export type Auto = {
   isOn: boolean
   /** The most pings one idle stretch may spend, before the break-even count lowers it. */
@@ -39,6 +39,6 @@ export type Auto = {
 
 declare module 'claude-code' {
   interface PluginState {
-    'cache-refresher': { snapshot: Snapshot | null; auto: Auto }
+    'cache-refresher': { snapshot: Snapshot | null; auto: Auto; seeded: boolean }
   }
 }

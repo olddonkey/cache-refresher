@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, ModelUsage, Register } from 'claude-code'
 
-import type { Snapshot, Ttl } from '../types'
+import type { Auto, Snapshot, Ttl } from '../types'
 import { PING_MARGIN_MS, TTL_MS, WRITE_MULTIPLIER, fmtRemaining, fmtTokens, fmtUsd, priceOf } from './economics'
 import { MESSAGES, langFrom } from './messages'
 import type { Lang, LangSource } from './messages'
@@ -32,6 +32,8 @@ const auto = atom({ plugin: 'cache-refresher', key: 'auto' } as const, {
   isOn: false,
   cap: DEFAULT_CAP,
 })
+// Whether this session's switch has taken the stored default yet; a reload keeps it, /clear resets it.
+const seeded = atom({ plugin: 'cache-refresher', key: 'seeded' } as const, false)
 
 const PING_PROMPT =
   'Prompt-cache keep-alive from the cache-refresher plugin. Reply with exactly: ok'
@@ -40,6 +42,7 @@ const OBSERVATIONS = 'observations'
 const MAX_OBSERVATIONS = 100
 const EXTENDS = 'pingExtends'
 const LANG = 'lang'
+const AUTO_DEFAULT = 'autoDefault'
 const HEARD = 'langHeard'
 // A reply's weight in the language tally halves with each reply after it.
 const HEARD_DECAY = 0.5
@@ -202,6 +205,23 @@ async function knownExtension($: EngineInterface): Promise<Extension> {
 async function learnExtension($: EngineInterface, ttl: Ttl, doesExtend: boolean): Promise<void> {
   extension = { ...(await knownExtension($)), [ttl]: doesExtend }
   await $.store.set(EXTENDS, extension)
+}
+
+/** The switch every new session starts with, as `/cache-auto default` saved it; null when nothing valid is saved. */
+async function autoDefault($: EngineInterface): Promise<Auto | null> {
+  const held = await $.store.get(AUTO_DEFAULT)
+  if (typeof held !== 'object' || held === null) return null
+  const { isOn, cap } = held as Partial<Auto>
+  if (typeof isOn !== 'boolean' || !Number.isInteger(cap) || cap! < 1 || cap! > MAX_CAP) return null
+
+  return { isOn, cap: cap! }
+}
+
+/** Starts this session's switch from the saved default, once per fresh `$.state`. */
+async function seedAuto($: EngineInterface): Promise<void> {
+  const saved = await autoDefault($)
+  if (saved !== null) await update($, auto, () => saved)
+  await update($, seeded, () => true)
 }
 
 async function viewOf($: EngineInterface): Promise<View> {
@@ -392,6 +412,8 @@ async function ping($: EngineInterface, isForced: boolean): Promise<PingResult> 
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
+    // session.start runs again on a reload, which keeps $.state: seed only a fresh one.
+    if (!(await read($, seeded))) await seedAuto($)
     $.clock.every(1000, async () => {
       const lang = await langOf($)
       const m = MESSAGES[lang]
@@ -463,6 +485,8 @@ export const register: Register = on => {
   })
 
   on('classic.SessionStart', async ($, e, next) => {
+    // /clear, /resume and /branch reset $.state without a new session.start.
+    if (e.source === 'clear' || e.source === 'resume' || e.source === 'fork') await seedAuto($)
     if (e.source === 'compact') {
       // The compacted conversation shares no prefix with what was cached.
       await update($, snap, () => null)
@@ -517,18 +541,26 @@ export const register: Register = on => {
 
   on('command.run', { command: 'cache-auto' }, async ($, e) => {
     const m = MESSAGES[await langOf($)]
-    const words = e.args.trim().split(/\s+/).filter(Boolean)
+    const all = e.args.trim().split(/\s+/).filter(Boolean)
+    const isDefault = all[0] === 'default'
+    const words = isDefault ? all.slice(1) : all
     const wanted = words.find(word => word === 'on' || word === 'off')
     const cap = words.map(Number).find(n => Number.isInteger(n) && n > 0 && n <= MAX_CAP)
     if (words.length > 0 && wanted === undefined && cap === undefined) return { text: m.autoUsage(MAX_CAP) }
+    // A saved default outlives this session, so it takes no word it would have to ignore.
+    const isStray = (word: string) => word !== wanted && Number(word) !== cap
+    if (isDefault && words.some(isStray)) return { text: m.autoUsage(MAX_CAP) }
     if (words.length > 0) {
       await update($, auto, now => ({
         isOn: wanted === undefined ? true : wanted === 'on',
         cap: cap ?? now.cap,
       }))
+      if (isDefault) await $.store.set(AUTO_DEFAULT, await read($, auto))
     }
+    const saved = await autoDefault($)
+    const defaultLine = m.autoDefault(saved?.isOn ?? false, saved?.cap ?? DEFAULT_CAP)
 
-    return { text: [m.autoHeader, ...autoLines(m, await viewOf($)), m.autoNote].join('\n') }
+    return { text: [m.autoHeader, ...autoLines(m, await viewOf($)), defaultLine, m.autoNote].join('\n') }
   })
 
   on('command.run', { command: 'cache-lang' }, async ($, e) => {

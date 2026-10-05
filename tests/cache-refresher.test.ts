@@ -234,6 +234,86 @@ test('auto sends one ping per idle stretch until a ping is proven to extend the 
   expect(logged[0]).toContain('auto keep-alive 1/1. Ping hit: read 80k')
 })
 
+test('a saved default turns auto on in a new session without /cache-auto', { timeoutMs: 30_000 }, async ($, on) => {
+  const clock = mock.clock(on, { now: START })
+  mock.store(on, { autoDefault: { isOn: true, cap: 3 } })
+  mock.env(on, HOUR_ENV)
+  let forks = 0
+  on('model.fork', () => {
+    forks += 1
+
+    return forkHit()
+  })
+  on('turn.step', async function* (_, e) {
+    return { turnId: e.turnId, index: e.index, answer: 'hi', toolUses: [], stopReason: 'end_turn', usage: usage(0, 80_000) }
+  })
+
+  await boot($, on)
+  const step = $.turn.step({ turnId: 't1', index: 0, model: 'claude-sonnet-5-5', messageCount: 1 })
+  for await (const _ of step) void _
+  await step.result
+  const status = await $.command.run({ command: 'cache-auto', args: '' })
+  expect(status.text).toContain('(cap 3)')
+  expect(status.text).toContain('default   on, at most 3 pings per idle stretch, in every new session')
+
+  await clock.advance(56 * MINUTE)
+  expect(forks).toBe(1)
+})
+
+test('/cache-auto default saves the switch and a session-only change leaves it alone', async ($, on) => {
+  mock.clock(on, { now: START })
+  mock.env(on, HOUR_ENV)
+  const saved = new Map<string, unknown>()
+  on('store.get', (_, e) => ({ value: saved.get(e.key) }))
+  on('store.set', (_, e) => {
+    saved.set(e.key, e.value)
+
+    return { value: undefined }
+  })
+  on('ui.invalidate', () => ({ value: undefined }))
+
+  const set = await $.command.run({ command: 'cache-auto', args: 'default on 4' })
+  expect(set.text).toContain('at most 4 pings per idle stretch; waiting for the first response')
+  expect(saved.get('autoDefault')).toEqual({ isOn: true, cap: 4 })
+
+  const sessionOnly = await $.command.run({ command: 'cache-auto', args: 'off' })
+  expect(sessionOnly.text).toContain('auto      off')
+  expect(saved.get('autoDefault')).toEqual({ isOn: true, cap: 4 })
+
+  const usageText = await $.command.run({ command: 'cache-auto', args: 'default soon' })
+  expect(usageText.text).toContain('Usage: /cache-auto [default]')
+
+  for (const args of ['default on 0', 'default on 1.5', 'default on 201', 'default on off']) {
+    const refused = await $.command.run({ command: 'cache-auto', args })
+    expect(refused.text).toContain('Usage: /cache-auto [default]')
+  }
+  expect(saved.get('autoDefault')).toEqual({ isOn: true, cap: 4 })
+  expect((await $.command.run({ command: 'cache-auto', args: '' })).text).toContain('auto      off')
+})
+
+test('a reload keeps the session\'s own switch over the saved default', async ($, on) => {
+  mock.clock(on, { now: START })
+  mock.store(on, { autoDefault: { isOn: true, cap: 5 } })
+  mock.env(on, HOUR_ENV)
+
+  await boot($, on)
+  await $.command.run({ command: 'cache-auto', args: 'off' })
+  // A reload runs session.start again over the same $.state.
+  await $.session.start({ cwd: '/tmp', surface: 'terminal', isInteractive: true })
+  expect((await $.command.run({ command: 'cache-auto', args: '' })).text).toContain('auto      off')
+})
+
+test('the default comes back after /clear', async ($, on) => {
+  mock.clock(on, { now: START })
+  mock.store(on, { autoDefault: { isOn: true, cap: 5 } })
+  mock.env(on, HOUR_ENV)
+  on('classic.SessionStart', () => ({}))
+
+  // Each test starts with $.state at its defaults, as /clear leaves it, and no session.start follows.
+  await $.classic.SessionStart({ source: 'clear' })
+  expect((await $.command.run({ command: 'cache-auto', args: '' })).text).toContain('auto      on, at most 5 pings per idle stretch; waiting')
+})
+
 test('a hit past the turn\'s own lifetime proves pings and unlocks the chain up to the cap', { timeoutMs: 60_000 }, async ($, on) => {
   const clock = mock.clock(on, { now: START })
   mock.store(on)
