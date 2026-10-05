@@ -20,7 +20,7 @@ import {
 } from './model'
 import type { Extension, Observation, Verdict, View } from './model'
 import { autoLines, report } from './report'
-import { ENTER_MS, REFILL_MS, bandView, paneView } from './views'
+import { bandView, paneView } from './views'
 import type { Motion } from './views'
 
 const DEFAULT_CAP = 12
@@ -71,6 +71,11 @@ let titledIn: Lang | undefined
 let openedAt: number | undefined
 // The touch that last refilled the cache, and the share of its lifetime left before it: the ring sweeps back from there.
 let refill: { at: number; from: number } | undefined
+// A survey unmounts the band's frame; its next appearance needs a fresh timeline.
+let bandHidden = false
+let bandEpoch = 0
+// Old frames can leave after their replacements have had time to load.
+const bufferEnds = new Set<number>()
 
 function isOn(value: string | undefined): boolean {
   return value === '1' || value === 'true'
@@ -210,14 +215,14 @@ async function viewOf($: EngineInterface): Promise<View> {
 /** What the drawings should be moving at this moment. */
 async function motionOf($: EngineInterface): Promise<Motion> {
   const now = await $.clock.now()
-  const sinceOpen = openedAt === undefined ? null : now - openedAt
-  const sinceRefill = refill === undefined ? null : now - refill.at
 
   return {
     now,
-    sinceOpen: sinceOpen !== null && sinceOpen < ENTER_MS ? sinceOpen : null,
-    refill: refill !== undefined && sinceRefill !== null && sinceRefill < REFILL_MS ? { since: sinceRefill, from: refill.from } : null,
+    openedAt: openedAt ?? null,
+    refill: refill ?? null,
     isPinging,
+    bandEpoch,
+    onBufferEnd: at => { bufferEnds.add(at) },
   }
 }
 
@@ -398,9 +403,16 @@ export const register: Register = on => {
       }
       const held = await read($, snap)
       const now = await $.clock.now()
+      let bufferEnded = false
+      for (const at of bufferEnds) {
+        if (now >= at) {
+          bufferEnds.delete(at)
+          bufferEnded = true
+        }
+      }
       // The countdown: redraw only when its words change.
       const head = held === null ? '' : remainingOf(held, now) > 0 ? fmtRemaining(remainingOf(held, now)) : 'cold'
-      if (head !== lastHead) {
+      if (head !== lastHead || bufferEnded) {
         lastHead = head
         $.ui.invalidate('ui.render')
       }
@@ -536,7 +548,16 @@ export const register: Register = on => {
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const view = await viewOf($)
     const { held } = view
-    if (e.props.hasSurvey || !isTracked(held)) return next(e)
+    if (e.props.hasSurvey) {
+      bandHidden = true
+
+      return next(e)
+    }
+    if (!isTracked(held)) return next(e)
+    if (bandHidden) {
+      bandHidden = false
+      bandEpoch += 1
+    }
     const m = MESSAGES[await langOf($)]
     const beneath = await next(e)
     const els = $.ui.resolve(e)

@@ -672,7 +672,8 @@ for (const lang of LANGS) {
     const bandDrawings = await band.findAll({ type: 'Svg' })
     const paneDrawings = await pane.findAll({ type: 'Svg' })
     expect(bandDrawings).toHaveLength(1)
-    expect(paneDrawings).toHaveLength(7)
+    // Splitting the card into ring, figure and costs adds two drawings.
+    expect(paneDrawings).toHaveLength(9)
     for (const drawing of [...bandDrawings, ...paneDrawings]) {
       const source = String(drawing.props.source)
       const m = MESSAGES[lang]
