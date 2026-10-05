@@ -46,8 +46,8 @@ export function detect(answer: string): Found | null {
   const locales: readonly Locale[] = LOCALES.filter(locale => locale.script === script && !('variantOf' in locale))
   if (locales.length === 1 && script !== 'latin') return { lang: locales[0]!.code as Lang, weight }
 
-  // Unicode word boundaries keep a short function word from matching part of another word.
-  const words = prose.toLowerCase().match(/\p{L}+/gu) ?? []
+  // Keep vowel signs with their letters; match whole words rather than parts of longer words.
+  const words = prose.toLowerCase().match(/\p{L}[\p{L}\p{M}]*/gu) ?? []
   for (const locale of locales) {
     const marks = locale.marks
       ? prose.match(new RegExp(locale.marks.source, locale.marks.flags.replace(/g/g, '') + 'g'))?.length ?? 0

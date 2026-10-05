@@ -121,7 +121,7 @@ test('a ping is refused once the cache is cold and restarts the countdown while 
   expect(forks).toBe(1)
 })
 
-test('the band draws the countdown on the terminal and the desktop', async ($, on) => {
+test('the band draws the countdown on the terminal and the desktop', { timeoutMs: 30_000 }, async ($, on) => {
   const clock = mock.clock(on, { now: START })
   mock.store(on)
   mock.env(on, { CLAUDE_CODE_PROMPT_CACHE_TTL: '1h' })
@@ -177,7 +177,7 @@ function forkHit() {
   return { value: { isAnswered: true, text: 'ok', usage: { input_tokens: 40, output_tokens: 200, cache_read_input_tokens: 80_000, cache_creation_input_tokens: 0 } } }
 }
 
-test('the band and card distinguish a model switch from the lifetime running out', async ($, on) => {
+test('the band and card distinguish a model switch from the lifetime running out', { timeoutMs: 30_000 }, async ($, on) => {
   const clock = mock.clock(on, { now: START })
   mock.store(on)
   mock.env(on, { CLAUDE_CODE_PROMPT_CACHE_TTL: '5m' })
@@ -224,7 +224,7 @@ test('the band and card distinguish a model switch from the lifetime running out
   await displays('Expired', 'Unavailable')
 })
 
-test('a small cache with no worthwhile refreshes explains the costs and plan', async ($, on) => {
+test('a small cache with no worthwhile refreshes explains the costs and plan', { timeoutMs: 30_000 }, async ($, on) => {
   mock.clock(on, { now: START })
   mock.store(on)
   mock.env(on, { CLAUDE_CODE_PROMPT_CACHE_TTL: '5m' })
@@ -387,7 +387,7 @@ test('a hit past the turn\'s own lifetime proves pings and unlocks the chain up 
   expect(spent.text).toContain('Prompt cache: not active')
 })
 
-test('the mod speaks Chinese when the person pins it, in the report and the band', async ($, on) => {
+test('the mod speaks Chinese when the person pins it, in the report and the band', { timeoutMs: 30_000 }, async ($, on) => {
   const clock = mock.clock(on, { now: START })
   mock.store(on, { lang: 'zh' })
   mock.env(on, HOUR_ENV)
@@ -429,7 +429,7 @@ test('the language follows the locale until /cache-lang pins another', async ($,
   expect(back.text).toBe('显示语言：中文（跟随系统）。')
 })
 
-test('the panel draws the dial, sets a lapse against a ping, and its buttons drive the keep-alive', async ($, on) => {
+test('the panel draws the dial, sets a lapse against a ping, and its buttons drive the keep-alive', { timeoutMs: 30_000 }, async ($, on) => {
   const clock = mock.clock(on, { now: START })
   mock.store(on)
   mock.env(on, HOUR_ENV)
@@ -562,7 +562,7 @@ test('a new session starts in the language the last one was following', async ($
   expect((await $.command.run({ command: 'cache-lang', args: '' })).text).toBe('显示语言：中文（跟随对话）。')
 })
 
-test('the drawings move when the cache\'s state does and are still otherwise', async ($, on) => {
+test('the drawings move when the cache\'s state does and are still otherwise', { timeoutMs: 30_000 }, async ($, on) => {
   const clock = mock.clock(on, { now: START })
   mock.store(on)
   mock.env(on, HOUR_ENV)

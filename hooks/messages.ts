@@ -22,6 +22,15 @@ import { id } from './locales/id'
 import { vi } from './locales/vi'
 import { th } from './locales/th'
 import { fil } from './locales/fil'
+import { hi } from './locales/hi'
+import { bn } from './locales/bn'
+import { mr } from './locales/mr'
+import { gu } from './locales/gu'
+import { ta } from './locales/ta'
+import { te } from './locales/te'
+import { kn } from './locales/kn'
+import { ml } from './locales/ml'
+import { bho } from './locales/bho'
 
 export type { Messages } from './locales/en'
 
@@ -282,6 +291,76 @@ export const LOCALES = [
       'ang', 'ng', 'mga', 'ito', 'iyon', 'hindi', 'ay', 'sa', 'kung', 'kapag', 'dahil',
       'upang', 'habang', 'naman', 'rin', 'din', 'lang', 'lamang', 'mo', 'mong',
       'iyong', 'natin', 'namin', 'ninyo', 'sila', 'siya',
+    ],
+  },
+  {
+    code: 'hi',
+    messages: hi,
+    pattern: /^(?:hi(?:[-_]|$)|hindi\b|हिन्दी|हिंदी)/,
+    script: 'devanagari',
+    default: true,
+    words: [
+      'है', 'हैं', 'और', 'नहीं', 'में', 'का', 'की', 'को', 'से', 'पर', 'यह', 'वह',
+      'आप', 'आपका', 'आपकी', 'अपने', 'इस', 'उस', 'ये', 'वे', 'लिए', 'लेकिन',
+      'यदि', 'तो', 'कि',
+    ],
+  },
+  {
+    code: 'bn',
+    messages: bn,
+    pattern: /^(?:bn(?:[-_]|$)|bengali\b|bangla\b|বাংলা)/,
+    script: 'bengali',
+  },
+  {
+    code: 'mr',
+    messages: mr,
+    pattern: /^(?:mr(?:[-_]|$)|marathi\b|मराठी)/,
+    script: 'devanagari',
+    words: [
+      'आहे', 'आहेत', 'आणि', 'नाही', 'मध्ये', 'च्या', 'मुळे', 'पण', 'म्हणून',
+      'जर', 'तर', 'हे', 'ही', 'ते', 'तो', 'त्या', 'त्याचे', 'तुम्ही', 'तुमचे',
+      'आपण', 'आम्ही', 'मी', 'माझे', 'किंवा', 'असे',
+    ],
+  },
+  {
+    code: 'gu',
+    messages: gu,
+    pattern: /^(?:gu(?:[-_]|$)|gujarati\b|ગુજરાતી)/,
+    script: 'gujarati',
+  },
+  {
+    code: 'ta',
+    messages: ta,
+    pattern: /^(?:ta(?:[-_]|$)|tamil\b|தமிழ்)/,
+    script: 'tamil',
+  },
+  {
+    code: 'te',
+    messages: te,
+    pattern: /^(?:te(?:[-_]|$)|telugu\b|తెలుగు)/,
+    script: 'telugu',
+  },
+  {
+    code: 'kn',
+    messages: kn,
+    pattern: /^(?:kn(?:[-_]|$)|kannada\b|ಕನ್ನಡ)/,
+    script: 'kannada',
+  },
+  {
+    code: 'ml',
+    messages: ml,
+    pattern: /^(?:ml(?:[-_]|$)|malayalam\b|മലയാളം)/,
+    script: 'malayalam',
+  },
+  {
+    code: 'bho',
+    messages: bho,
+    pattern: /^(?:bho(?:[-_]|$)|bhojpuri\b|भोजपुरी)/,
+    script: 'devanagari',
+    words: [
+      'बा', 'बाड़े', 'बानी', 'बाड़ऽ', 'बाड़न', 'रहल', 'रहली', 'हमनी', 'आ', 'भा',
+      'रउआ', 'रउरा', 'ओकर', 'एकर', 'कवन', 'काहे', 'कइसन', 'नइखे', 'नाहीं',
+      'हई', 'होखे', 'संगे', 'खातिर', 'अइसन', 'तइसन', 'ओह', 'एह', 'त', 'तबे',
     ],
   },
 ] as const satisfies readonly Locale[]

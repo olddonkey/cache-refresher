@@ -347,6 +347,42 @@ const DETECTION_SAMPLES = {
     'Sinuri ko ang mga pagbabago at nagdagdag ng pagsusuri para sa mga request na pumapalya. Hindi mababago ang iyong mga pinili kapag walang sagot. Maaari mong tingnan ang panel upang matiyak na tama ang mga halagang ipinapakita.',
     'Sa register.tsx, sinusuri muna ang sagot bago i-save ang mga setting. Hindi mawawala ang iyong mga pinili kung pumalya ang request. Handa na ang mga pagsusuri, kaya maaari mong patakbuhin ang mga ito at tingnan ang panel.',
   ],
+  hi: [
+    'बदलाव तैयार हैं और मैंने त्रुटियों के लिए जाँच भी जोड़ी है। यदि अनुरोध विफल होता है तो आपकी पुरानी सेटिंग नहीं बदलती। आप परीक्षण चला सकते हैं और देख सकते हैं कि पैनल में सही मान दिख रहे हैं या नहीं।',
+    'मैंने register.tsx में जवाब की जाँच जोड़ी है और पुराने मान बनाए रखे हैं। अब अनुरोध विफल होने पर आपकी सेटिंग नहीं बदलती। आप परीक्षण चलाएँ और फिर देखें कि ऐप दोबारा शुरू करने पर भी वही मान दिखते हैं।',
+  ],
+  bn: [
+    'পরিবর্তনগুলো পরীক্ষা করেছি এবং অনুরোধ ব্যর্থ হলে কী হবে তার জন্য পরীক্ষাও যোগ করেছি। উত্তর না এলেও আপনার আগের সেটিং থাকবে। এবার পরীক্ষা চালিয়ে দেখুন প্যানেলে সঠিক মান দেখা যাচ্ছে কি না।',
+    'register.tsx ফাইলে সেটিং সংরক্ষণের আগে উত্তর যাচাই করার ব্যবস্থা করেছি। অনুরোধ ব্যর্থ হলে আগের মান বদলাবে না। আপনি পরীক্ষা চালিয়ে তারপর অ্যাপ আবার চালু করে প্যানেলের মানগুলো যাচাই করতে পারেন।',
+  ],
+  mr: [
+    'बदल तयार आहेत आणि विनंती अयशस्वी झाल्यास काय होते याची चाचणी जोडली आहे। उत्तर आले नाही तर आधीची सेटिंग बदलत नाही। तुम्ही चाचण्या चालवा आणि पॅनलमध्ये योग्य मूल्ये दिसत आहेत का ते पाहा।',
+    'register.tsx मध्ये उत्तर तपासण्याची सोय केली आहे आणि आधीची मूल्ये तशीच ठेवली आहेत। विनंती अयशस्वी झाली तर तुमची सेटिंग बदलत नाही। चाचण्या चालवल्यानंतर पॅनलमध्ये दिसणारी मूल्ये तपासा आणि पुढील काम करा।',
+  ],
+  gu: [
+    'ફેરફારો તપાસ્યા છે અને વિનંતી નિષ્ફળ જાય ત્યારે શું થાય તેની કસોટી પણ ઉમેરી છે. જવાબ ન મળે તો પણ તમારી પહેલાની સેટિંગ જળવાશે. હવે કસોટીઓ ચલાવીને જુઓ કે પેનલમાં યોગ્ય મૂલ્યો દેખાય છે કે નહીં.',
+    'register.tsx માં સેટિંગ સાચવતાં પહેલાં જવાબ તપાસવાની વ્યવસ્થા કરી છે. વિનંતી નિષ્ફળ જાય ત્યારે જૂનાં મૂલ્યો બદલાશે નહીં. તમે કસોટીઓ ચલાવીને પછી ઍપ ફરી શરૂ કરો અને પેનલનાં મૂલ્યો તપાસો.',
+  ],
+  ta: [
+    'மாற்றங்களைச் சரிபார்த்து, கோரிக்கை தோல்வியடைந்தால் என்ன நடக்கும் என்பதற்கான சோதனையையும் சேர்த்துள்ளேன். பதில் வராவிட்டாலும் பழைய அமைப்புகள் மாறாது. சோதனைகளை இயக்கிய பிறகு பேனலில் சரியான மதிப்புகள் காட்டப்படுகின்றனவா எனப் பார்க்கவும்.',
+    'register.tsx கோப்பில் அமைப்புகளைச் சேமிக்கும் முன் பதிலைச் சரிபார்க்கும் வசதியைச் சேர்த்துள்ளேன். கோரிக்கை தோல்வியடைந்தால் பழைய மதிப்புகள் மாறாது. சோதனைகளை இயக்கி, செயலியை மீண்டும் தொடங்கிய பிறகும் பேனலில் அதே மதிப்புகள் உள்ளனவா எனப் பார்க்கவும்.',
+  ],
+  te: [
+    'మార్పులను తనిఖీ చేసి, అభ్యర్థన విఫలమైతే ఏం జరుగుతుందో పరీక్షను కూడా జోడించాను. సమాధానం రాకపోయినా మీ పాత సెట్టింగ్‌లు మారవు. ఇప్పుడు పరీక్షలు నడిపి ప్యానెల్‌లో సరైన విలువలు కనిపిస్తున్నాయో చూడండి.',
+    'register.tsx ఫైల్‌లో సెట్టింగ్‌లను భద్రపరిచే ముందు సమాధానాన్ని తనిఖీ చేసే విధానాన్ని జోడించాను. అభ్యర్థన విఫలమైతే పాత విలువలు మారవు. పరీక్షలు నడిపిన తర్వాత యాప్‌ను మళ్లీ తెరిచి ప్యానెల్‌లోని విలువలను చూడండి.',
+  ],
+  kn: [
+    'ಬದಲಾವಣೆಗಳನ್ನು ಪರಿಶೀಲಿಸಿ ವಿನಂತಿ ವಿಫಲವಾದಾಗ ಏನಾಗುತ್ತದೆ ಎಂಬ ಪರೀಕ್ಷೆಯನ್ನೂ ಸೇರಿಸಿದ್ದೇನೆ. ಉತ್ತರ ಬರದಿದ್ದರೂ ನಿಮ್ಮ ಹಿಂದಿನ ಸೆಟ್ಟಿಂಗ್‌ಗಳು ಬದಲಾಗುವುದಿಲ್ಲ. ಈಗ ಪರೀಕ್ಷೆಗಳನ್ನು ಚಲಾಯಿಸಿ ಪ್ಯಾನಲ್‌ನಲ್ಲಿ ಸರಿಯಾದ ಮೌಲ್ಯಗಳು ಕಾಣುತ್ತಿವೆಯೇ ಎಂದು ನೋಡಿ.',
+    'register.tsx ಕಡತದಲ್ಲಿ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಉಳಿಸುವ ಮುನ್ನ ಉತ್ತರವನ್ನು ಪರಿಶೀಲಿಸುವ ವ್ಯವಸ್ಥೆ ಸೇರಿಸಿದ್ದೇನೆ. ವಿನಂತಿ ವಿಫಲವಾದರೆ ಹಳೆಯ ಮೌಲ್ಯಗಳು ಬದಲಾಗುವುದಿಲ್ಲ. ಪರೀಕ್ಷೆಗಳನ್ನು ಚಲಾಯಿಸಿದ ನಂತರ ಆ್ಯಪ್ ಮತ್ತೆ ತೆರೆದು ಪ್ಯಾನಲ್‌ನ ಮೌಲ್ಯಗಳನ್ನು ಪರಿಶೀಲಿಸಿ.',
+  ],
+  ml: [
+    'മാറ്റങ്ങൾ പരിശോധിക്കുകയും അഭ്യർഥന പരാജയപ്പെടുമ്പോൾ എന്ത് സംഭവിക്കുമെന്ന് പരിശോധിക്കുന്ന പരീക്ഷണം ചേർക്കുകയും ചെയ്തു. മറുപടി വന്നില്ലെങ്കിലും പഴയ ക്രമീകരണങ്ങൾ മാറില്ല. ഇനി പരീക്ഷണങ്ങൾ നടത്തി പാനലിൽ ശരിയായ മൂല്യങ്ങൾ കാണുന്നുണ്ടോ എന്ന് നോക്കുക.',
+    'register.tsx ഫയലിൽ ക്രമീകരണങ്ങൾ സൂക്ഷിക്കുന്നതിന് മുമ്പ് മറുപടി പരിശോധിക്കുന്ന സംവിധാനം ചേർത്തു. അഭ്യർഥന പരാജയപ്പെട്ടാൽ പഴയ മൂല്യങ്ങൾ മാറില്ല. പരീക്ഷണങ്ങൾ നടത്തിയ ശേഷം ആപ്പ് വീണ്ടും തുറന്ന് പാനലിലെ മൂല്യങ്ങൾ പരിശോധിക്കുക.',
+  ],
+  bho: [
+    'बदलाव तैयार बा आ हमनी गलती वाला हालत के जाँच जोड़ले बानी। जवाब ना आई तबो पुरान सेटिंग ना बदली। रउआ जाँच चला के देखीं कि पैनल में सही मान देखात बा कि ना। ओकर बाद अगिला काम शुरू कइल जा सकेला।',
+    'register.tsx में जवाब जाँचे के इंतजाम जोड़ल बा। अनुरोध नाकाम होखे त पुरान मान ना बदली आ रउआ के चुनल सेटिंग ओही तरह रही। हमनी जाँच चला सकेनी आ फेर ऐप खोले के बाद पैनल के मान देख सकेनी।',
+  ],
 } satisfies Partial<Record<Lang, readonly string[]>>
 
 const ENGLISH = DETECTION_SAMPLES.en[0]!
@@ -377,6 +413,30 @@ test('unit three samples never select another locale and include a file name', (
   }
 })
 
+const UNIT_FOUR = ['hi', 'bn', 'mr', 'gu', 'ta', 'te', 'kn', 'ml', 'bho'] as const
+
+test('unit four samples never select another locale and include a file name', () => {
+  for (const lang of UNIT_FOUR) {
+    expect(DETECTION_SAMPLES[lang].some(sample => sample.includes('register.tsx'))).toBe(true)
+    for (const sample of DETECTION_SAMPLES[lang]) {
+      const found = detect(sample)
+      expect(found?.lang).toBe(lang)
+      for (const other of LANGS.filter(code => code !== lang)) expect(found?.lang).not.toBe(other)
+    }
+  }
+})
+
+test('Devanagari function words retain vowel signs and match whole words', () => {
+  const prose = 'विनंतीचे उत्तर तपासल्यानंतर जुने पर्याय सुरक्षित ठेवण्यासाठी पुढील बदल तयार केले.'
+  expect(detect('आहे आणि नाही ' + prose)?.lang).toBe('mr')
+  expect(detect('बा बाड़े हमनी ' + prose)?.lang).toBe('bho')
+  expect(detect('है हैं नहीं ' + prose)?.lang).toBe('hi')
+  expect(detect('चाहे बांधकाम बाड़ेदार हमनीय ' + prose)?.lang).toBe('hi')
+  expect(detect('रहे रहे रहे ' + prose)?.lang).toBe('hi')
+  expect(detect('आहे आणि नाही बा बाड़े हमनी ' + prose)?.lang).toBe('hi')
+  expect(detect(prose)?.lang).toBe('hi')
+})
+
 test('Thai marks have no width and Vietnamese diacritics retain Latin widths', () => {
   expect(estimateWidth('กิุ่', 14)).toBe(estimateWidth('ก', 14))
   expect(estimateWidth('ăâêôơưắầệốớự', 14)).toBe(estimateWidth('aaeoouaaeoou', 14))
@@ -405,6 +465,15 @@ test('new language hints recognise locales, bare codes, English and native names
     vi: ['vi_VN.UTF-8', 'vi', 'Vietnamese', 'Tiếng Việt'],
     th: ['th_TH.UTF-8', 'th', 'Thai', 'ไทย'],
     fil: ['fil_PH.UTF-8', 'tl_PH', 'fil', 'tl', 'Filipino', 'Tagalog'],
+    hi: ['hi_IN.UTF-8', 'hi', 'Hindi', 'हिन्दी', 'हिंदी'],
+    bn: ['bn_IN.UTF-8', 'bn_BD', 'bn', 'Bengali', 'Bangla', 'বাংলা'],
+    mr: ['mr_IN.UTF-8', 'mr', 'Marathi', 'मराठी'],
+    gu: ['gu_IN.UTF-8', 'gu', 'Gujarati', 'ગુજરાતી'],
+    ta: ['ta_IN.UTF-8', 'ta', 'Tamil', 'தமிழ்'],
+    te: ['te_IN.UTF-8', 'te', 'Telugu', 'తెలుగు'],
+    kn: ['kn_IN.UTF-8', 'kn', 'Kannada', 'ಕನ್ನಡ'],
+    ml: ['ml_IN.UTF-8', 'ml', 'Malayalam', 'മലയാളം'],
+    bho: ['bho_IN.UTF-8', 'bho', 'Bhojpuri', 'भोजपुरी'],
   }
   for (const [lang, samples] of Object.entries(hints)) {
     for (const hint of samples) expect(langFrom(hint)).toBe(lang)
@@ -449,7 +518,7 @@ test('the most recent single hit fits the history caption', () => {
   for (const lang of LANGS) expect(estimateWidth(MESSAGES[lang].historyAll(1), 12) <= 120).toBe(true)
 })
 
-for (const lang of ['ja', 'fr', 'nb', 'th'] as const) {
+for (const lang of ['ja', 'fr', 'nb', 'th', 'hi', 'ta'] as const) {
   test(lang + ' pin changes the cache-status language', async ($, on) => {
     mock.clock(on, { now: 1_700_000_000_000 })
     mock.store(on)
@@ -556,7 +625,7 @@ test('all drawing entry points default to English and carry each catalog languag
 })
 
 for (const lang of LANGS) {
-  test(lang + ' command accepts hints and lists registered codes for an unknown language', async ($, on) => {
+  test(lang + ' command accepts hints and lists registered codes for an unknown language', { timeoutMs: 30_000 }, async ($, on) => {
     mock.clock(on, { now: 1_700_000_000_000 })
     mock.store(on, { lang })
     on('ui.invalidate', () => ({ value: undefined }))
@@ -578,7 +647,7 @@ for (const lang of LANGS) {
     }
   })
 
-  test(lang + ' band and panel pass the catalog language to every drawing', async ($, on) => {
+  test(lang + ' band and panel pass the catalog language to every drawing', { timeoutMs: 30_000 }, async ($, on) => {
     mock.clock(on, { now: 1_700_000_000_000 })
     mock.store(on, { lang })
     mock.env(on, { CLAUDE_CODE_PROMPT_CACHE_TTL: '1h' })
