@@ -23,6 +23,7 @@ On the desktop app the ring and the panel are drawn and animated. In the termina
 | `/cache-panel` | Opens the panel |
 | `/cache-ping [force]` | Sends one keep-alive now. Refused when the cache is already cold, unless `force` |
 | `/cache-auto [on\|off] [max]` | Turns auto keep-alive on or off and sets the most pings per idle stretch (default 12) |
+| `/cache-auto default [on\|off] [max]` | Does the same and saves it as the setting every new session starts with |
 | `/cache-lang [auto\|en\|zh]` | Pins the language, or goes back to following the conversation |
 
 ## Examples
@@ -63,7 +64,7 @@ The mod registers these hooks. None of them changes what Claude is sent or what 
 ## Requirements and limits
 
 - Claude Code **v2.1.287 or later**: this plugin is a [mod](https://code.claude.com/docs/en/plugins/mods/overview). Tested on Claude Code 2.1.288 in the terminal and in the desktop app's Code tab. The mods API is new and may change.
-- Auto keep-alive is per session and starts off. Until the mod has seen a ping actually extend the cache, it sends one ping per idle stretch and no more.
+- Auto keep-alive is per session and starts off, unless `/cache-auto default on` saved another starting point; `/clear`, `/resume` and `/branch` go back to that saved default. Until the mod has seen a ping actually extend the cache, it sends one ping per idle stretch and no more.
 - Only the main conversation is tracked. Subagents keep caches of their own.
 - After compaction the mod starts tracking afresh, and after a model switch it shows the cache as cold: what was cached no longer matches.
 
@@ -114,7 +115,7 @@ claude plugin test
 
 - **输入框上方的状态条**：随时间变短的圆环、倒计时、已缓存的 token 数和过期后的重建成本。
 - **面板**（`/cache-panel` 或状态条上的“详情 ›”）：倒计时、过期与保活一次的金额对比、盈亏平衡规则、自动保活开关与次数上限、“立即保活”按钮和最近几次缓存命中情况。
-- **自动保活**默认关闭，按会话生效。开启后会在缓存快过期时发送一次保活请求，次数不超过你设的上限，也不会超过“一次过期”的成本。**保活会消耗你的套餐用量或 API 额度。**
+- **自动保活**默认关闭，按会话生效；用 `/cache-auto default on [次数]` 可让每个新会话默认开启，`/clear`、`/resume`、`/branch` 后也会恢复这个默认值。开启后会在缓存快过期时发送一次保活请求，次数不超过你设的上限，也不会超过“一次过期”的成本。**保活会消耗你的套餐用量或 API 额度。**
 - 语言自动跟随对话；`/cache-lang zh` 或 `/cache-lang en` 可以固定。
 - 除了通过 Claude Code 发出的保活请求外，不发起任何网络请求，不上传数据；只在每条回复经过时统计中英文字符来判断语言，不保存回复内容，也不读取设置文件、对话记录或任何凭据。
 

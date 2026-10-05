@@ -29,7 +29,7 @@ const en = {
   cmdStatus: 'Show the prompt cache countdown and what a lapse would cost',
   cmdPing: 'Send one keep-alive that refreshes the prompt cache',
   cmdAuto: 'Keep the prompt cache warm while idle, within a ping budget',
-  cmdAutoHint: '[on|off] [max pings]',
+  cmdAutoHint: '[default] [on|off] [max pings]',
   cmdLang: 'Set the language cache-refresher speaks',
 
   expiredAgo: (gap: string) => `expired ${gap} ago`,
@@ -94,7 +94,12 @@ const en = {
   extendsUnknown: (ttl: Ttl) =>
     `unconfirmed: auto sends one ping per idle stretch until a ping is seen to restart the full ${ttl}`,
   autoNote: '  note      pings go out only while this app is running and the machine is awake, and they spend usage',
-  autoUsage: (max: number) => `Usage: /cache-auto [on|off] [max pings per idle stretch, 1 to ${max}]`,
+  autoUsage: (max: number) =>
+    `Usage: /cache-auto [default] [on|off] [max pings per idle stretch, 1 to ${max}]; with default, every new session starts that way`,
+  autoDefault: (isOn: boolean, cap: number) =>
+    isOn
+      ? `  default   on, at most ${cap} pings per idle stretch, in every new session`
+      : '  default   off in every new session (/cache-auto default on to change it)',
 
   details: 'details ›',
   cmdPanel: 'Open the prompt cache panel',
@@ -152,7 +157,7 @@ const zh: Messages = {
   cmdStatus: '显示提示缓存倒计时和过期代价',
   cmdPing: '发送一次保活，刷新提示缓存',
   cmdAuto: '空闲时在预算内自动保持缓存有效',
-  cmdAutoHint: '[on|off] [最大次数]',
+  cmdAutoHint: '[default] [on|off] [最大次数]',
   cmdLang: '设置 cache-refresher 的显示语言',
 
   expiredAgo: gap => `已过期 ${gap}`,
@@ -204,7 +209,11 @@ const zh: Messages = {
   extendsNo: '未确认，最近一次证据是保活后未命中，所以自动保活每段空闲只发一次',
   extendsUnknown: ttl => `未确认，在看到保活能续满 ${ttl} 之前，自动保活每段空闲只发一次`,
   autoNote: '  注意：只有应用在运行且电脑未休眠时才会发送保活，并且会消耗用量',
-  autoUsage: max => `用法：/cache-auto [on|off] [每段空闲的最大保活次数，1 到 ${max}]`,
+  autoUsage: max => `用法：/cache-auto [default] [on|off] [每段空闲的最大保活次数，1 到 ${max}]；加 default 则每个新会话都按此开始`,
+  autoDefault: (isOn, cap) =>
+    isOn
+      ? `  默认设置：每个新会话开启，每段空闲最多 ${cap} 次`
+      : '  默认设置：每个新会话关闭（/cache-auto default on 可更改）',
 
   details: '详情 ›',
   cmdPanel: '打开提示缓存面板',
