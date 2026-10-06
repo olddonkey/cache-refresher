@@ -488,12 +488,10 @@ test('the panel draws the dial, sets a lapse against a ping, and its buttons dri
   expect(drawings).toHaveLength(9)
   expect(drawings[0]!.props.width).toBe(60)
   expect(drawings[0]!.props.height).toBe(60)
-  expect(drawings[0]!.props.isInteractive).toBe(true)
   expect(String(drawings[0]!.props.source)).not.toContain('<text')
   const card = String(drawings[1]!.props.source)
   expect(drawings[1]!.props.width).toBe(238)
   expect(drawings[1]!.props.height).toBe(62)
-  expect(drawings[1]!.props.isInteractive).not.toBe(true)
   expect(card).toContain('>60m</text>')
   expect(card).toContain('>left · 180k tokens cached</text>')
   expect(card).toContain('<text x="0" y="31"')
@@ -501,7 +499,6 @@ test('the panel draws the dial, sets a lapse against a ping, and its buttons dri
   const comparison = String(drawings[2]!.props.source)
   expect(drawings[2]!.props.width).toBe(314)
   expect(drawings[2]!.props.height).toBe(94)
-  expect(drawings[2]!.props.isInteractive).toBe(true)
   expect(comparison).toContain('>$3.60</text>')
   // The terminal's ping measured what a ping really adds, so the figures now use that.
   expect(comparison).toContain('>$0.055</text>')
@@ -519,6 +516,8 @@ test('the panel draws the dial, sets a lapse against a ping, and its buttons dri
   expect(drawn).toContain('>Estimates at API list prices</text>')
   // Every drawing says what it is: one without an alt is not drawn.
   expect(drawings.every(one => String(one.props.alt).length > 0)).toBe(true)
+  // Every drawing is an image: the desktop rebuilds a site at each change, and a sandboxed frame would blink.
+  expect(drawings.every(one => one.props.isInteractive !== true)).toBe(true)
   // The panel keeps a docked pane's width however wide the pane is.
   expect((await desk.drawn()).props.width).toBe(42)
   expect((await desk.find({ key: 'auto-toggle' }))?.text).toContain('Turn on')
@@ -580,7 +579,7 @@ test('a new session starts in the language the last one was following', async ($
   expect((await $.command.run({ command: 'cache-lang', args: '' })).text).toBe('显示语言：中文（跟随对话）。')
 })
 
-test('the drawings move when the cache\'s state does and are still otherwise', { timeoutMs: 30_000 }, async ($, on) => {
+test('the drawings move when the cache\'s state does, and a redraw carries a movement on', { timeoutMs: 30_000 }, async ($, on) => {
   const clock = mock.clock(on, { now: START })
   mock.store(on)
   mock.env(on, HOUR_ENV)
@@ -633,102 +632,102 @@ test('the drawings move when the cache\'s state does and are still otherwise', {
 
   // A response has just filled the cache: the ring sweeps up from empty and lets one ripple go.
   let drawn = await card()
-  expect(drawn.ring).toContain('<animate attributeName="stroke-dasharray" values="0.00 144.51;144.49 144.51"')
+  expect(drawn.ring).toContain('<animate attributeName="stroke-dasharray" values="0.00 144.51;144.49 144.51;0.00 144.51"')
   expect(drawn.ring).toContain('<animate attributeName="r" values="23;23;26.90"')
   const firstCard = drawn
-  const firstBand = await band('60m')
 
-  // Nothing has changed since: the frames keep their own timelines, while the figure follows the clock.
+  // Nothing has changed since: each draw shows the arc where it now stands, burning down, and nothing else moves.
   await clock.advance(8 * MINUTE)
   drawn = await card()
-  expect(drawn.ring).toBe(firstCard.ring)
+  expect(drawn.ring).toContain('from="125.24 144.51" to="0.00 144.51" dur="3120.000s" begin="0s" calcMode="linear"')
+  expect(drawn.ring).not.toContain('values="0.00 144.51;')
+  expect(drawn.ring).not.toContain('<animate attributeName="r"')
   expect(drawn.costs).toBe(firstCard.costs)
   expect(drawn.figure).not.toBe(firstCard.figure)
   expect(drawn.figure).toContain('>52m</text>')
-  expect((await band('52m')).ring).toBe(firstBand.ring)
+  expect((await band('52m')).ring).toContain('dur="3120.000s" begin="0s" calcMode="linear"')
 
   // Opening the panel draws the ring from nothing and grows the two bars one after the other.
   await $.command.run({ command: 'cache-panel', args: '' })
   await clock.advance(200)
   drawn = await card()
-  expect(drawn.ring).not.toBe(firstCard.ring)
   expect(drawn.ring).toContain('<animate attributeName="stroke-dasharray" values="0.00 144.51;')
   expect(drawn.ring).not.toContain('<animate attributeName="r"')
   expect(drawn.costs.match(/<animate attributeName="width"/g)).toHaveLength(2)
-  expect(drawn.ring).toContain('begin="0s"')
+  // The entrance runs from the draw that first shows it, however long the panel took to appear.
   expect(drawn.ring).not.toContain('begin="-')
-  const entrance = drawn
-  // A redraw leaves the running entrance alone, even after it has finished.
+  expect(drawn.costs).not.toContain('begin="-')
+  // A redraw partway through carries the entrance on from where it stands.
+  await clock.advance(300)
+  drawn = await card()
+  expect(drawn.ring).toContain('<animate attributeName="stroke-dasharray" values="0.00 144.51;')
+  expect(drawn.ring).toContain('begin="-0.300s" calcMode="spline"')
+  expect(drawn.costs.match(/<animate attributeName="width"[^>]*begin="-0.300s"/g)).toHaveLength(2)
+  // Once it has played, the drawings are still again.
   await clock.advance(2000)
   drawn = await card()
-  expect(drawn.ring).toBe(entrance.ring)
-  expect(drawn.costs).toBe(entrance.costs)
+  expect(drawn.ring).not.toContain('values="0.00 144.51;')
+  expect(drawn.costs).toBe(firstCard.costs)
 
-  // In its last fifth with no keep-alive to come, the ring breathes and the band's words warn.
-  await clock.advance(42 * MINUTE - 2200)
+  // In its last fifth with no keep-alive to come, the ring is two minutes into its breath and the band's words warn.
+  await clock.advance(42 * MINUTE - 2500)
   drawn = await card()
-  expect(drawn.ring).toBe(entrance.ring)
-  expect(drawn.costs).toBe(entrance.costs)
   expect(drawn.ring).toContain('<animate attributeName="opacity" values="1;0.45;1"')
+  expect(drawn.ring).toContain('dur="1.800s" begin="-120.000s" end="600.000s"')
   expect((await band('10m')).color).toBe('warning')
 
   // With a keep-alive to come it is calm, and a stud marks where the arc will stand when the ping goes out.
   await $.command.run({ command: 'cache-auto', args: 'on' })
   drawn = await card()
-  expect(drawn.ring).not.toBe(entrance.ring)
   expect(drawn.ring).not.toContain('values="1;0.45;1"')
   expect(drawn.ring).toContain('fill="#FFFFFF"')
-  expect(drawn.costs).toBe(entrance.costs)
+  expect(drawn.costs).toBe(firstCard.costs)
   const savedBand = await band('10m')
-  expect(savedBand.ring).not.toBe(firstBand.ring)
+  expect(savedBand.ring).not.toContain('values="1;0.45;1"')
   expect(savedBand.color).toBeUndefined()
   await $.command.run({ command: 'cache-auto', args: 'off' })
-  const beforePing = await card()
-  const beforePingBand = await band('10m')
 
   // While a ping is out a lit stretch travels the ring; when it lands the arc sweeps back from where it stood.
   const sent = $.command.run({ command: 'cache-ping', args: '' })
   while (answer === undefined) await new Promise(resolve => setTimeout(resolve, 1))
   drawn = await card()
-  expect(drawn.ring).not.toBe(beforePing.ring)
   expect(drawn.ring).toContain('<animateTransform attributeName="transform" type="rotate"')
   expect(drawn.figure).toContain('>Refreshing…</text>')
   expect(drawn.ring).not.toContain('values="1;0.45;1"')
-  const travelling = drawn.ring
-  const travellingBand = await band('10m')
-  expect(travellingBand.ring).not.toBe(beforePingBand.ring)
-  expect(travellingBand.ring).toContain('<animateTransform')
+  expect((await band('10m')).ring).toContain('<animateTransform')
+  // A redraw while it is out finds the lit stretch where it has got to.
+  await clock.advance(400)
+  expect((await card()).ring).toContain('dur="1.100s" begin="-0.400s" repeatCount="indefinite"')
   answer()
   await sent
   drawn = await card()
-  expect(drawn.ring).not.toBe(travelling)
   expect(drawn.ring).not.toContain('<animateTransform')
-  expect(drawn.ring).toContain('<animate attributeName="stroke-dasharray" values="24.09 144.51;144.49 144.51"')
+  expect(drawn.ring).toContain('<animate attributeName="stroke-dasharray" values="24.07 144.51;144.47 144.51;0.00 144.51"')
   expect(drawn.ring).toContain('<animate attributeName="r" values="23;23;26.90"')
   const after = await band('60m')
-  expect(after.ring).not.toBe(travellingBand.ring)
-  expect(after.ring).toContain('<animate attributeName="stroke-dasharray"')
+  expect(after.ring).not.toContain('<animateTransform')
+  expect(after.ring).toContain('<animate attributeName="stroke-dasharray" values="')
 
   // The way into the panel sits at the band's far edge: a spacer takes the room before it.
   expect(after.beforeDetails).toBe(1)
 
-  // A new main-thread turn gives both sites new timelines too.
+  // A new main-thread turn sweeps the little it had burnt back, in both sites; that buys too little to ripple.
   await clock.advance(MINUTE)
-  const previous = drawn.ring
   const next = $.turn.step({ turnId: 't2', index: 0, model: 'claude-fable-5-1', messageCount: 2 })
   for await (const _ of next) void _
   await next.result
-  expect((await card()).ring).not.toBe(previous)
-  expect((await band('60m')).ring).not.toBe(after.ring)
+  drawn = await card()
+  expect(drawn.ring).toContain('<animate attributeName="stroke-dasharray" values="142.09 144.51;144.49 144.51;0.00 144.51"')
+  expect(drawn.ring).not.toContain('<animate attributeName="r"')
+  expect((await band('60m')).ring).toContain('values="40.16 40.84;40.83 40.84;0.00 40.84"')
 })
 
 // The two drawing sites with a real snapshot, and mounts that expose the host's plain-data tree.
-async function drawingSession($: any, on: any, ttl = '1h', options: { starts?: boolean; model?: string } = {}) {
+async function drawingSession($: any, on: any, ttl = '1h', options: { model?: string } = {}) {
   const clock = mock.clock(on, { now: START })
   mock.store(on)
   mock.env(on, { CLAUDE_CODE_PROMPT_CACHE_TTL: ttl })
-  let redraws = 0
-  if (!options.starts) on('ui.invalidate', () => { redraws += 1; return { value: undefined } })
+  on('ui.invalidate', () => ({ value: undefined }))
   on('ui.open', () => ({ value: undefined }))
   on('ui.render', { component: 'AbovePrompt' }, (inner: any, e: any) => inner.ui.resolve(e).Box({}))
   let size = 180_000
@@ -752,29 +751,39 @@ async function drawingSession($: any, on: any, ttl = '1h', options: { starts?: b
     plugin: 'cache-refresher', surface: 'desktop', component: 'Pane', requestId: 'cache',
     props: { title: 'Prompt cache', isFocused: true, bodyColumns: 60, placement: 'dock', scroll: { offset: 0, bodyRows: 40 }, view: {} },
   })
-  if (options.starts) await boot($, on, () => { redraws += 1 })
+  // What a site draws at this moment: its ring, and for the panel its bars, as sources; and every drawing it has.
+  const drawn = async (site: 'band' | 'card') => {
+    const ui = await (site === 'band' ? band() : card())
+    const drawings = await ui.findAll({ type: 'Svg' })
+    const seen = {
+      drawings,
+      ring: String(drawings.find((one: any) => one.props.width === (site === 'band' ? 18 : 60))?.props.source ?? ''),
+      costs: String(drawings.find((one: any) => one.props.height === 94)?.props.source ?? ''),
+      tree: await ui.drawn(),
+    }
+    await ui.unmount()
 
-  return { clock, turn, band, card, redraws: () => redraws, clearRedraws: () => { redraws = 0 } }
+    return seen
+  }
+
+  return { clock, turn, band, card, drawn }
 }
 
-/** The keyed frame wrappers, in paint order, for one drawing's dimensions. */
-function drawingFrames(tree: any, width: number, height: number): any[] {
-  const children = tree.children ?? []
-  const own = tree.type === 'Box' && tree.props?.key && children.length === 1 &&
-    children[0].type === 'Svg' && children[0].props.width === width && children[0].props.height === height ? [tree] : []
+/** Every Box in a tree. */
+function boxes(tree: any): any[] {
+  const children = (tree.children ?? []).filter((child: any) => typeof child !== 'string')
 
-  return [...own, ...children.flatMap((child: any) => typeof child === 'string' ? [] : drawingFrames(child, width, height))]
+  return [...(tree.type === 'Box' ? [tree] : []), ...children.flatMap((child: any) => boxes(child))]
 }
 
-test('the ring timeline counts down to cold and schedules only an unprotected closing breath', { timeoutMs: 30_000 }, async ($, on) => {
-  const { clock, turn, band, card } = await drawingSession($, on, '5m')
+test('a ring is drawn where its lifetime stands: counting down, breathing only unprotected, cold once expired', { timeoutMs: 30_000 }, async ($, on) => {
+  const { clock, turn, drawn } = await drawingSession($, on, '5m')
   await turn()
   await clock.advance(MINUTE)
-  const pane = await card()
-  const strip = await band()
-  const source = String((await pane.findAll({ type: 'Svg' }))[0]!.props.source)
-  const dial = String((await strip.findAll({ type: 'Svg' }))[0]!.props.source)
+  const source = (await drawn('card')).ring
+  const dial = (await drawn('band')).ring
   expect(source).toContain('<animate attributeName="stroke-dasharray" from="115.61 144.51" to="0.00 144.51" dur="240.000s" begin="0s" calcMode="linear" fill="freeze"/>')
+  // Expiry is part of the drawing: it turns cold by itself if nothing redraws it first.
   expect(source).toContain('<set attributeName="visibility" to="hidden" begin="240.000s" fill="freeze"/>')
   expect(source).toContain('stroke="#5F7D95" stroke-width="3.5999999999999996" stroke-dasharray="9.03 9.03" visibility="hidden"><set attributeName="visibility" to="visible" begin="240.000s"')
   expect(source).toContain('dur="1.800s" begin="180.000s" end="240.000s"')
@@ -782,167 +791,112 @@ test('the ring timeline counts down to cold and schedules only an unprotected cl
   expect(dial).toContain('begin="180.000s" end="240.000s"')
   expect(source).not.toContain('<text')
   expect(dial).not.toContain('<text')
-  await pane.unmount()
-  await strip.unmount()
 
   await $.command.run({ command: 'cache-auto', args: 'on', ...COMMAND_SITE })
-  const protectedPane = await card()
-  const protectedBand = await band()
-  const protectedRing = String((await protectedPane.findAll({ type: 'Svg' })).filter((one: any) => one.props.width === 60).at(-1)!.props.source)
-  const protectedDial = String((await protectedBand.findAll({ type: 'Svg' })).at(-1)!.props.source)
+  const protectedRing = (await drawn('card')).ring
   expect(protectedRing).not.toContain('values="1;0.45;1"')
-  expect(protectedDial).not.toContain('values="1;0.45;1"')
+  expect((await drawn('band')).ring).not.toContain('values="1;0.45;1"')
   expect(protectedRing).toContain('fill="#FFFFFF"')
-  await protectedPane.unmount()
-  await protectedBand.unmount()
 
-  // Even expiry is part of the existing timeline, so neither frame's source changes at that boundary.
+  // Past expiry a draw shows the cold ring outright.
   await clock.advance(5 * MINUTE)
-  const expiredPane = await card()
-  const expiredBand = await band()
-  expect(String((await expiredPane.findAll({ type: 'Svg' }))[0]!.props.source)).toBe(protectedRing)
-  expect(String((await expiredBand.findAll({ type: 'Svg' }))[0]!.props.source)).toBe(protectedDial)
-  const figure = String((await expiredPane.findAll({ type: 'Svg' })).find((one: any) => one.props.width === 238)!.props.source)
+  const expired = await drawn('card')
+  expect(expired.ring).toContain('stroke="#5F7D95" stroke-width="3.5999999999999996" stroke-dasharray="9.03 9.03"/>')
+  expect(expired.ring).not.toContain('<animate')
+  expect((await drawn('band')).ring).not.toContain('<animate')
+  const figure = String(expired.drawings.find((one: any) => one.props.width === 238)!.props.source)
   expect(figure).toContain('fill="#5F7D95">Expired</text>')
-  await expiredPane.unmount()
-  await expiredBand.unmount()
 
-  // Rebuilding an already-closing unprotected ring starts its breath immediately.
+  // A ring drawn while already closing joins its breath in step: ten seconds in, fifty to go.
   await turn()
   await clock.advance(4 * MINUTE + 10_000)
   await $.command.run({ command: 'cache-auto', args: 'off', ...COMMAND_SITE })
-  const closing = await card()
-  const closingRing = String((await closing.findAll({ type: 'Svg' })).filter((one: any) => one.props.width === 60).at(-1)!.props.source)
-  expect(closingRing).toContain('dur="1.800s" begin="0.000s" end="50.000s"')
-  await closing.unmount()
+  expect((await drawn('card')).ring).toContain('dur="1.800s" begin="-10.000s" end="50.000s"')
 })
 
-test('the band rebuilds its timeline when it returns from a survey', { timeoutMs: 30_000 }, async ($, on) => {
-  const { clock, turn, band } = await drawingSession($, on)
+test('the band draws its ring as it stands when it returns from a survey', { timeoutMs: 30_000 }, async ($, on) => {
+  const { clock, turn, band, drawn } = await drawingSession($, on)
   await turn()
   await clock.advance(MINUTE)
-  const before = await band()
-  const source = String((await before.findAll({ type: 'Svg' }))[0]!.props.source)
-  await before.unmount()
+  expect((await drawn('band')).ring).toContain('dur="3540.000s"')
   const hidden = await band(true)
   expect(await hidden.findAll({ type: 'Svg' })).toHaveLength(0)
   await hidden.unmount()
   await clock.advance(2 * MINUTE)
-  const after = await band()
-  const rebuilt = String((await after.findAll({ type: 'Svg' })).at(-1)!.props.source)
-  expect(rebuilt).not.toBe(source)
-  expect(rebuilt).toContain('dur="3420.000s"')
-  await after.unmount()
-  await clock.advance(1000)
-  const still = await band()
-  expect(await still.findAll({ type: 'Svg' })).toHaveLength(1)
-  expect(String((await still.findAll({ type: 'Svg' }))[0]!.props.source)).toBe(rebuilt)
-  await still.unmount()
+  const after = await drawn('band')
+  expect(after.drawings).toHaveLength(1)
+  expect(after.ring).toContain('dur="3420.000s"')
 })
 
-test('rebuilt frames cover loading and keep their keys when the clock removes the covers', { timeoutMs: 30_000 }, async ($, on) => {
-  const { clock, turn, band, card, redraws, clearRedraws } = await drawingSession($, on, '1h', { starts: true })
+test('every drawing is an image in the flow, and a redraw carries a refill or an entrance on', { timeoutMs: 30_000 }, async ($, on) => {
+  const { clock, turn, drawn } = await drawingSession($, on)
   await turn()
   await clock.advance(2 * MINUTE)
-  const firstBand = await band()
-  const firstCard = await card()
-  const oldBand = drawingFrames(await firstBand.drawn(), 18, 18)[0]
-  const oldCard = drawingFrames(await firstCard.drawn(), 60, 60)[0]
-  const oldCosts = drawingFrames(await firstCard.drawn(), 314, 94)[0]
-  await firstBand.unmount()
-  await firstCard.unmount()
 
-  // New numbers rebuild costs too; a refill covers both drawings for the full ripple window.
+  // New numbers and a refill: the arc sweeps back from where it stood, timed from this first draw.
   await turn(160_000)
-  const rebuiltBand = await band()
-  const rebuiltCard = await card()
-  const bandFrames = drawingFrames(await rebuiltBand.drawn(), 18, 18)
-  const cardFrames = drawingFrames(await rebuiltCard.drawn(), 60, 60)
-  const costsFrames = drawingFrames(await rebuiltCard.drawn(), 314, 94)
-  for (const [frames, old] of [[bandFrames, oldBand], [cardFrames, oldCard], [costsFrames, oldCosts]] as const) {
-    expect(frames).toHaveLength(2)
-    expect(frames[0].props.key).toBe(old.props.key)
-    expect(frames[0].children[0].props.source).toBe(old.children[0].props.source)
-    expect(frames[0].props.position).not.toBe('absolute')
-    expect(frames[1].props.key).not.toBe(old.props.key)
-    expect(frames[1].props.position).toBe('absolute')
-    expect(frames[1].props.top).toBe(0)
-    expect(frames[1].props.left).toBe(0)
+  for (const site of ['band', 'card'] as const) {
+    const seen = await drawn(site)
+    // Nothing is a sandboxed frame, and nothing is laid over anything else: there is nothing to load or to cover.
+    expect(seen.drawings.every((one: any) => one.props.isInteractive !== true)).toBe(true)
+    expect(boxes(seen.tree).some(box => box.props?.position !== undefined || box.props?.key !== undefined)).toBe(false)
+    expect(seen.drawings.filter((one: any) => one.props.width === (site === 'band' ? 18 : 60))).toHaveLength(1)
   }
-  expect(cardFrames[1].children[0].props.source).toContain('values="139.70 144.51;144.49 144.51"')
-  expect(costsFrames[1].children[0].props.source).not.toContain('<animate attributeName="width"')
-  await rebuiltBand.unmount()
-  await rebuiltCard.unmount()
+  let card = await drawn('card')
+  expect(card.ring).toContain('values="139.70 144.51;144.49 144.51;0.00 144.51" keyTimes="0;0.000194;1"')
+  expect(card.ring).toContain('dur="3600.000s" begin="0.000s" calcMode="spline"')
+  expect(card.costs).not.toContain('<animate attributeName="width"')
 
-  await clock.advance(1000)
-  const covering = await card()
-  expect(drawingFrames(await covering.drawn(), 60, 60)).toHaveLength(2)
-  expect(drawingFrames(await covering.drawn(), 314, 94)).toHaveLength(2)
-  await covering.unmount()
-  // At 60m the text does not change on this tick; the buffer deadline alone must invalidate the UI.
-  clearRedraws()
-  await clock.advance(1000)
-  expect(redraws() > 0).toBe(true)
-  const settledBand = await band()
-  const settledCard = await card()
-  for (const [ui, width, height, frames] of [[settledBand, 18, 18, bandFrames], [settledCard, 60, 60, cardFrames], [settledCard, 314, 94, costsFrames]] as const) {
-    const settled = drawingFrames(await ui.drawn(), width, height)
-    expect(settled).toHaveLength(1)
-    expect(settled[0].props.key).toBe(frames[1].props.key)
-    expect(settled[0].children[0].props.source).toBe(frames[1].children[0].props.source)
-    expect(settled[0].props.position).not.toBe('absolute')
-  }
-  await settledBand.unmount()
-  await settledCard.unmount()
+  // A redraw 300ms on tells the same movement from the same start, 300ms in.
+  await clock.advance(300)
+  card = await drawn('card')
+  expect(card.ring).toContain('values="139.70 144.51;144.49 144.51;0.00 144.51" keyTimes="0;0.000194;1"')
+  expect(card.ring).toContain('dur="3600.000s" begin="-0.300s" calcMode="spline"')
+  expect((await drawn('band')).ring).toContain('dur="3600.000s" begin="-0.300s" calcMode="spline"')
 
-  // A policy change uses the one-second cover, and never restarts the panel's entrance.
-  await $.command.run({ command: 'cache-auto', args: 'on', ...COMMAND_SITE })
-  const policyCard = await card()
-  const policyFrames = drawingFrames(await policyCard.drawn(), 60, 60)
-  expect(policyFrames).toHaveLength(2)
-  await policyCard.unmount()
+  // Once the sweep and its ripple have had their time, a draw shows only the lifetime burning down.
   await clock.advance(1000)
-  const settledPolicy = await card()
-  const single = drawingFrames(await settledPolicy.drawn(), 60, 60)
-  expect(single).toHaveLength(1)
-  expect(single[0].props.key).toBe(policyFrames[1].props.key)
-  await settledPolicy.unmount()
+  card = await drawn('card')
+  expect(card.ring).not.toContain('values="139.70 144.51;')
+  expect(card.ring).toContain('dur="3598.700s" begin="0s" calcMode="linear"')
 
-  // An opening has no mounted frame to cover: both entrance drawings appear only once.
+  // Opening the panel draws the ring from nothing and grows the bars, from the first draw of the open panel.
   await $.command.run({ command: 'cache-panel', args: '', ...COMMAND_SITE })
-  const opened = await card()
-  const openingRing = drawingFrames(await opened.drawn(), 60, 60)
-  const openingCosts = drawingFrames(await opened.drawn(), 314, 94)
-  expect(openingRing).toHaveLength(1)
-  expect(openingCosts).toHaveLength(1)
-  expect(openingRing[0].children[0].props.source).toContain('values="0.00 144.51;')
-  expect(String(openingCosts[0].children[0].props.source).match(/<animate attributeName="width"/g)).toHaveLength(2)
-  const gap = (await opened.drawn()).children[0].children[0].props.columnGap
-  expect(gap).toBe(2)
-  await opened.unmount()
+  await clock.advance(150)
+  const opened = await drawn('card')
+  expect(opened.ring).toContain('values="0.00 144.51;')
+  expect(opened.ring).not.toContain('begin="-')
+  expect(opened.costs.match(/<animate attributeName="width"[^>]*begin="0.000s"/g)).toHaveLength(2)
+  expect(opened.tree.children[0].children[0].props.columnGap).toBe(2)
+  // The band has no entrance.
+  expect((await drawn('band')).ring).not.toContain('values="0.00 40.84;')
 
-  // Numbers arriving during the entrance get their own frame without growing the bars again.
+  // Numbers arriving during the entrance: the refill takes the ring over, and the bars go on growing to their new lengths.
   await clock.advance(200)
   await turn(140_000)
-  const changed = await card()
-  const changedRing = drawingFrames(await changed.drawn(), 60, 60)
-  // The visible entrance is partway through its sweep, although the snapshot is still almost full.
-  const from = Number(String(changedRing[1].children[0].props.source).match(/values="([\d.]+) 144.51;/)![1])
-  expect(from > 110 && from < 130).toBe(true)
-  const changedCosts = drawingFrames(await changed.drawn(), 314, 94)
-  expect(changedCosts).toHaveLength(2)
-  expect(changedCosts[1].children[0].props.source).not.toContain('<animate attributeName="width"')
-  await changed.unmount()
+  const changed = await drawn('card')
+  expect(changed.ring).not.toContain('values="0.00 144.51;')
+  expect(changed.ring).toContain('begin="0.000s" calcMode="spline"')
+  expect(changed.costs.match(/<animate attributeName="width"[^>]*begin="-0.200s"/g)).toHaveLength(2)
+  expect(changed.costs).not.toBe(opened.costs)
+
+  // An opening seen too late is not played after the fact.
+  await $.command.run({ command: 'cache-panel', args: '', ...COMMAND_SITE })
+  await clock.advance(5000)
+  const late = await drawn('card')
+  expect(late.ring).not.toContain('values="0.00 144.51;')
+  expect(late.costs).not.toContain('<animate attributeName="width"')
 })
 
-test('an unpriced cache keeps its figure and ring without a costs frame', { timeoutMs: 30_000 }, async ($, on) => {
+test('an unpriced cache keeps its figure and ring without the costs drawing', { timeoutMs: 30_000 }, async ($, on) => {
   const { clock, turn, card } = await drawingSession($, on, '1h', { model: 'unknown-model' })
   await turn(80_000)
   await clock.advance(MINUTE)
   const pane = await card()
-  expect(drawingFrames(await pane.drawn(), 60, 60)).toHaveLength(1)
-  expect(drawingFrames(await pane.drawn(), 314, 94)).toHaveLength(0)
-  expect((await pane.findAll({ type: 'Svg' })).filter((one: any) => one.props.width === 238)).toHaveLength(1)
+  const drawings = await pane.findAll({ type: 'Svg' })
+  expect(drawings.filter((one: any) => one.props.width === 60)).toHaveLength(1)
+  expect(drawings.filter((one: any) => one.props.height === 94)).toHaveLength(0)
+  expect(drawings.filter((one: any) => one.props.width === 238)).toHaveLength(1)
   expect(await pane.find({ type: 'Text', text: 'Pricing unavailable for this model' })).toBeDefined()
   await pane.unmount()
 })

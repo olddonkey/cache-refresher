@@ -40,7 +40,10 @@ function styleOf(fonts: string): string {
     '@media (prefers-color-scheme: dark){.ink{fill:#ECEBE6}.sec{fill:#A3A29C}.track{stroke:#45443F}.bar{fill:#5C5B55}}</style>'
 }
 
-// A frame runs its own timeline; redraws keep it until the state changes.
+// The desktop builds a site's whole tree anew whenever anything in it changes, so no drawing outlives a
+// redraw, and a sandboxed frame would load again, blank for a moment, each time. Every drawing is therefore
+// an image, which is replaced without a gap, and one that moves says where each movement stands as it is
+// drawn: a movement under way begins at a negative time, and carries on from there.
 // What arrives eases out; what repeats eases both ways.
 const EASE_OUT = '0.22 1 0.36 1'
 const EASE_BOTH = '0.45 0 0.55 1'
@@ -54,20 +57,18 @@ export const ENTER_MS = 900
 export const REFILL_MS = RIPPLE_DELAY_MS + RIPPLE_MS
 
 /**
- * The events a timeline starts from. Their identities stay put after their movements have finished.
+ * The moment of a draw, and the events its movements run from.
  */
 export type Motion = {
   now: number
   openedAt: number | null
   /** The last refill, and the share of the lifetime left before it. */
   refill: { at: number; from: number } | null
-  isPinging: boolean
-  bandEpoch: number
-  /** Ask the clock to redraw once the old frame can be removed. */
-  onBufferEnd?: (at: number) => void
+  /** When the ping under way went out; null with none. */
+  pingAt: number | null
 }
 
-export const STILL: Motion = { now: 0, openedAt: null, refill: null, isPinging: false, bandEpoch: 0 }
+export const STILL: Motion = { now: 0, openedAt: null, refill: null, pingAt: null }
 
 export type PaneHandlers = {
   onToggle: () => void
@@ -101,18 +102,35 @@ function isClosing(held: Snapshot, now: number): boolean {
 
 const seconds = (ms: number) => (ms / 1000).toFixed(3)
 
-/** A value arriving where the drawing already has it: held at `from` for `delay`, then eased over `ms`. */
-function arrive(attribute: string, from: string, to: string, ms: number, delay = 0, freeze = true): string {
+/** A value arriving where the drawing already has it: held at `from` for `delay`, then eased over `ms`, begun `since` ago. */
+function arrive(attribute: string, from: string, to: string, ms: number, delay = 0, since = 0): string {
   const values = delay > 0 ? `${from};${from};${to}` : `${from};${to}`
   const times = delay > 0 ? `0;${(delay / (delay + ms)).toFixed(3)};1` : '0;1'
   const splines = delay > 0 ? `0 0 1 1;${EASE_OUT}` : EASE_OUT
 
-  return `<animate attributeName="${attribute}" values="${values}" keyTimes="${times}" keySplines="${splines}" dur="${seconds(delay + ms)}s" begin="0s" calcMode="spline" fill="${freeze ? 'freeze' : 'remove'}"/>`
+  return `<animate attributeName="${attribute}" values="${values}" keyTimes="${times}" keySplines="${splines}" dur="${seconds(delay + ms)}s" begin="${seconds(-since)}s" calcMode="spline" fill="freeze"/>`
 }
 
-/** There and back from the last fifth until expiry. */
+/** There and back from the last fifth until expiry; a `begin` already past is negative, and keeps the breath in step. */
 function breathe(begin: number, end: number): string {
   return `<animate attributeName="opacity" values="1;0.45;1" keyTimes="0;0.5;1" keySplines="${EASE_BOTH};${EASE_BOTH}" dur="${seconds(BREATH_MS)}s" begin="${seconds(begin)}s" end="${seconds(end)}s" calcMode="spline" repeatCount="indefinite"/>`
+}
+
+// A movement is timed from the draw that first shows it. That draw trails the event behind it by a moment, as
+// every later draw trails its own clock, and timed this way the two delays cancel: a redraw finds the
+// movement where the screen has it.
+const shown: Record<string, { event: number; at: number }> = {}
+
+/** How long a site has been showing the movement an event set off; null once `window` has passed, or if it was first seen too late to play. */
+function sinceShown(site: string, event: number, now: number, window = Infinity): number | null {
+  let first = shown[site]
+  if (first?.event !== event) {
+    first = { event, at: now - event < window ? now : event }
+    shown[site] = first
+  }
+  const since = now - first.at
+
+  return since < window ? since : null
 }
 
 type Ring = {
@@ -129,12 +147,24 @@ type Ring = {
   mark: number | null
 }
 
+/** The movements under way as a ring is drawn, each by how long ago it began. */
+type Moves = {
+  /** A ping is out. */
+  pinging: number | null
+  /** The arc is on its way back up from a share: after a refill, or from nothing as the panel opens. */
+  sweep: { from: number; since: number; isRefill: boolean } | null
+  /** The panel is opening. */
+  entering: number | null
+}
+
+const AT_REST: Moves = { pinging: null, sweep: null, entering: null }
+
 /**
  * The lifetime left as a ring's arc, clockwise from the top; a cold cache is a dashed ring.
  * Its movements: drawn from nothing as the panel opens, swept back to full when a touch refills it with a
  * ripple if that bought real time, a lit stretch travelling while a ping is out, a slow breath when closing.
  */
-function ring(o: Ring, isPinging: boolean, sweepFrom: number | null, isRefill = false, enters = false): string {
+function ring(o: Ring, moves: Moves = AT_REST): string {
   const { center, radius, stroke } = o
   const around = 2 * Math.PI * radius
   const circle = `cx="${center}" cy="${center}" r="${radius}" fill="none"`
@@ -144,21 +174,24 @@ function ring(o: Ring, isPinging: boolean, sweepFrom: number | null, isRefill = 
   const dash = (share: number) => `${(around * share).toFixed(2)} ${around.toFixed(2)}`
   const fromTop = `transform="rotate(-90 ${center} ${center})"`
   const expires = `${seconds(o.remaining)}s`
-  // The sweep yields to the lifetime's linear arc at exactly the share it has reached by then.
-  const sweepMs = Math.min(SWEEP_MS, o.remaining)
-  const sweep = sweepFrom !== null
-    ? arrive('stroke-dasharray', dash(sweepFrom), dash(Math.max(0, left - sweepMs / o.lifetime)), sweepMs, 0, false)
-    : ''
-  const breath = !o.isProtected && !isPinging ? breathe(Math.max(0, o.remaining - o.lifetime / 5), o.remaining) : ''
-  const arc = `<circle ${circle} stroke="${EMBER}" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${dash(left)}" ${fromTop}${isPinging ? ' opacity="0.35"' : ''}><animate attributeName="stroke-dasharray" from="${dash(left)}" to="${dash(0)}" dur="${expires}" begin="0s" calcMode="linear" fill="freeze"/>${sweep}${breath}</circle>`
+  const isPinging = moves.pinging !== null
+  const { sweep } = moves
+  // The lifetime burns the arc down to nothing. A sweep is the same movement told from its own start:
+  // eased up to the share the lifetime will have reached by its end, then down with the lifetime.
+  const whole = o.remaining + (sweep?.since ?? 0)
+  const burn = sweep !== null && whole > SWEEP_MS
+    ? `<animate attributeName="stroke-dasharray" values="${dash(sweep.from)};${dash((whole - SWEEP_MS) / o.lifetime)};${dash(0)}" keyTimes="0;${(SWEEP_MS / whole).toFixed(6)};1" keySplines="${EASE_OUT};0 0 1 1" dur="${seconds(whole)}s" begin="${seconds(-sweep.since)}s" calcMode="spline" fill="freeze"/>`
+    : `<animate attributeName="stroke-dasharray" from="${dash(left)}" to="${dash(0)}" dur="${expires}" begin="0s" calcMode="linear" fill="freeze"/>`
+  const breath = !o.isProtected && !isPinging ? breathe(o.remaining - o.lifetime / 5, o.remaining) : ''
+  const arc = `<circle ${circle} stroke="${EMBER}" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${dash(left)}" ${fromTop}${isPinging ? ' opacity="0.35"' : ''}>${burn}${breath}</circle>`
 
-  const traveller = isPinging
-    ? `<circle ${circle} stroke="${EMBER}" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${dash(0.16)}"><animateTransform attributeName="transform" type="rotate" from="0 ${center} ${center}" to="360 ${center} ${center}" dur="${seconds(TRAVEL_MS)}s" begin="0s" repeatCount="indefinite"/></circle>`
+  const traveller = moves.pinging !== null
+    ? `<circle ${circle} stroke="${EMBER}" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${dash(0.16)}"><animateTransform attributeName="transform" type="rotate" from="0 ${center} ${center}" to="360 ${center} ${center}" dur="${seconds(TRAVEL_MS)}s" begin="${seconds(-moves.pinging)}s" repeatCount="indefinite"/></circle>`
     : ''
 
   let ripple = ''
-  if (isRefill && sweepFrom !== null && left - sweepFrom > 0.1) {
-    const begin = `dur="${seconds(REFILL_MS)}s" begin="0s" calcMode="spline" fill="freeze"`
+  if (sweep?.isRefill && left - sweep.from > 0.1) {
+    const begin = `dur="${seconds(REFILL_MS)}s" begin="${seconds(-sweep.since)}s" calcMode="spline" fill="freeze"`
     const at = (RIPPLE_DELAY_MS / REFILL_MS).toFixed(3)
     const lit = (RIPPLE_DELAY_MS / REFILL_MS + 0.08).toFixed(3)
     ripple =
@@ -175,7 +208,7 @@ function ring(o: Ring, isPinging: boolean, sweepFrom: number | null, isRefill = 
     const angle = 2 * Math.PI * o.mark
     const x = (center + radius * Math.sin(angle)).toFixed(2)
     const y = (center - radius * Math.cos(angle)).toFixed(2)
-    const appear = enters ? arrive('opacity', '0', '1', 200, SWEEP_MS * 0.6) : ''
+    const appear = moves.entering !== null ? arrive('opacity', '0', '1', 200, SWEEP_MS * 0.6, moves.entering) : ''
     stud = `<circle cx="${x}" cy="${y}" r="${(stroke / 4).toFixed(2)}" fill="#FFFFFF">${appear}</circle>`
   }
 
@@ -185,7 +218,11 @@ function ring(o: Ring, isPinging: boolean, sweepFrom: number | null, isRefill = 
 /** The band's mark: the ring alone, small. */
 export function dialSvg(left: number, isCold: boolean, isClosing: boolean, motion: Motion = STILL, locale: DrawingLocale = MESSAGES.en): string {
   const lifetime = TTL_MS['5m']
-  const drawn = ring({ center: 9, radius: 6.5, stroke: 3, left, isCold, remaining: left * lifetime, lifetime, isProtected: !isClosing, mark: null }, motion.isPinging, motion.refill?.from ?? null, motion.refill !== null)
+  const drawn = ring({ center: 9, radius: 6.5, stroke: 3, left, isCold, remaining: left * lifetime, lifetime, isProtected: !isClosing, mark: null }, {
+    pinging: motion.pingAt !== null ? motion.now - motion.pingAt : null,
+    sweep: motion.refill !== null ? { from: motion.refill.from, since: motion.now - motion.refill.at, isRefill: true } : null,
+    entering: null,
+  })
 
   return `<svg xmlns="http://www.w3.org/2000/svg" lang="${locale.tag}" viewBox="0 0 18 18">${styleOf(locale.fonts)}${drawn}</svg>`
 }
@@ -211,7 +248,7 @@ export function cardSvg(o: Card): { source: string; height: number } {
 type Costs = { lapseLabel: string; lapseUsd: string; pingLabel: string; pingUsd: string; share: number; note: string }
 
 /** The lower 94px of the old card, with its coordinates measured from y=62. */
-function costsSvg(costs: Costs, locale: DrawingLocale, enters: boolean): string {
+function costsSvg(costs: Costs, locale: DrawingLocale, entering: number | null): string {
   const width = PANEL_PIXELS
   const labelWidth = Math.max(cells(costs.lapseLabel), cells(costs.pingLabel)) * 7
   const barX = labelWidth + 12
@@ -221,7 +258,7 @@ function costsSvg(costs: Costs, locale: DrawingLocale, enters: boolean): string 
   const sliver = Math.max(3, Math.round(barWidth * Math.min(1, costs.share)))
   // As the panel opens the two bars grow one after the other: the comparison is read in that order.
   const grow = (to: number, ms: number, delay: number) =>
-    enters ? arrive('width', '0', String(to), ms, delay) : ''
+    entering !== null ? arrive('width', '0', String(to), ms, delay, entering) : ''
   const parts = [
     row(20, costs.lapseLabel, costs.lapseUsd, `<rect x="${barX}" y="26" width="${barWidth}" height="8" rx="4" class="bar" fill="#C9C7BF">${grow(barWidth, 500, 150)}</rect>`),
     row(48, costs.pingLabel, costs.pingUsd, `<rect x="${barX}" y="54" width="${sliver}" height="8" rx="${Math.min(4, sliver / 2)}" fill="${EMBER}">${grow(sliver, 250, 650)}</rect>`),
@@ -231,67 +268,15 @@ function costsSvg(costs: Costs, locale: DrawingLocale, enters: boolean): string 
   return `<svg xmlns="http://www.w3.org/2000/svg" lang="${locale.tag}" viewBox="0 0 ${width} 94">${styleOf(locale.fonts)}${parts.join('')}</svg>`
 }
 
-type Drawing = { id: number; source: string }
-type Buffered = { key: string; current: Drawing; previous?: Drawing; until: number }
-type RingDrawing = Buffered & {
-  at: number
-  ring: Ring
-  sweepFrom: number | null
-  refillAt: number | null
-  openedAt: number | null
-}
-
-let drawingId = 0
-const rings: Partial<Record<'band' | 'card', RingDrawing>> = {}
-let comparison: (Buffered & { openedAt: number | null; refillAt: number | null }) | undefined
-
-/** The same ease as the sweep's SMIL spline, sampled when another refill interrupts it. */
-function sweepShare(progress: number): number {
-  const curve = (t: number, a: number, b: number) => 3 * (1 - t) ** 2 * t * a + 3 * (1 - t) * t ** 2 * b + t ** 3
-  let low = 0
-  let high = 1
-  for (let i = 0; i < 20; i += 1) {
-    const t = (low + high) / 2
-    if (curve(t, 0.22, 0.36) < progress) low = t
-    else high = t
-  }
-
-  return curve((low + high) / 2, 1, 1)
-}
-
-/** Where the frame already on screen stands, including a sweep still arriving. */
-function drawnShare(drawn: RingDrawing, now: number): number {
-  const { ring: o, sweepFrom } = drawn
-  if (o.isCold) return 0
-  const elapsed = Math.max(0, now - drawn.at)
-  const sweepMs = Math.min(SWEEP_MS, o.remaining)
-  if (sweepFrom !== null && elapsed < sweepMs) {
-    const to = Math.max(0, o.left - sweepMs / o.lifetime)
-
-    return sweepFrom + (to - sweepFrom) * sweepShare(elapsed / sweepMs)
-  }
-
-  return Math.max(0, (o.remaining - elapsed) / o.lifetime)
-}
-
-/** A state's clock is read once, when its timeline is built, never to key a redraw. */
-function ringDrawing(site: 'band' | 'card', held: Snapshot, isProtected: boolean, motion: Motion, locale: DrawingLocale): RingDrawing {
+/** A site's ring as it stands at this draw: the lifetime's arc, and whatever movement is under way. */
+function ringSvg(site: 'band' | 'card', held: Snapshot, isProtected: boolean, motion: Motion, entering: number | null, locale: DrawingLocale): string {
+  const { now, refill, pingAt } = motion
   const lifetime = TTL_MS[held.ttl]
-  const mark = isProtected ? LEAD_MS[held.ttl] / lifetime : null
-  const openedAt = site === 'card' ? motion.openedAt : null
-  const refillAt = motion.refill?.at ?? null
-  const key = JSON.stringify([held.touchedAt, held.ttl, held.coldReason, isProtected, mark, motion.isPinging, refillAt, openedAt, site === 'band' ? motion.bandEpoch : 0])
-  const previous = rings[site]
-  if (previous?.key === key) return previous
-
-  const now = motion.now
   const remaining = Math.max(0, remainingOf(held, now))
-  const opens = site === 'card' && openedAt !== null && openedAt !== previous?.openedAt
-  const enters = opens && now - openedAt < ENTER_MS
-  const refills = motion.refill !== null && refillAt !== previous?.refillAt && now - motion.refill.at < REFILL_MS
-  const sweepFrom = refills ? previous ? drawnShare(previous, now) : motion.refill!.from : enters ? 0 : null
-  const o: Ring = {
-    center: site === 'band' ? 9 : 30,
+  const sinceRefill = refill !== null ? sinceShown(`${site}-refill`, refill.at, now, REFILL_MS) : null
+  const size = site === 'band' ? 18 : 60
+  const drawn = ring({
+    center: size / 2,
     radius: site === 'band' ? 6.5 : 23,
     stroke: site === 'band' ? 3 : 6,
     left: Math.min(1, remaining / lifetime),
@@ -299,65 +284,17 @@ function ringDrawing(site: 'band' | 'card', held: Snapshot, isProtected: boolean
     remaining,
     lifetime,
     isProtected,
-    mark: site === 'card' ? mark : null,
-  }
-  const id = ++drawingId
-  const size = site === 'band' ? 18 : 60
-  const until = previous && !opens ? now + (refills ? REFILL_MS : 1000) : now
-  const drawn: RingDrawing = {
-    key,
-    at: now,
-    ring: o,
-    sweepFrom,
-    refillAt,
-    openedAt,
-    current: { id, source: `<svg xmlns="http://www.w3.org/2000/svg" id="ring-${id}" lang="${locale.tag}" viewBox="0 0 ${size} ${size}">${styleOf(locale.fonts)}${ring(o, motion.isPinging, sweepFrom, refills, enters && !refills)}</svg>` },
-    previous: previous && !opens ? previous.current : undefined,
-    until,
-  }
-  rings[site] = drawn
-  if (drawn.previous) motion.onBufferEnd?.(until)
-
-  return drawn
-}
-
-function costsDrawing(costs: Costs, motion: Motion, locale: DrawingLocale): Buffered {
-  const still = costsSvg(costs, locale, false)
-  const key = JSON.stringify([still, motion.openedAt])
-  if (comparison?.key === key) return comparison
-  const opens = motion.openedAt !== null && comparison?.openedAt !== motion.openedAt
-  const enters = opens && motion.now - motion.openedAt! < ENTER_MS
-  const previous = opens ? undefined : comparison?.current
-  const refills = motion.refill !== null && comparison?.refillAt !== motion.refill.at && motion.now - motion.refill.at < REFILL_MS
-  const until = previous ? motion.now + (refills ? REFILL_MS : 1000) : motion.now
-  comparison = {
-    key,
-    openedAt: motion.openedAt,
-    refillAt: motion.refill?.at ?? null,
-    current: { id: ++drawingId, source: enters ? costsSvg(costs, locale, true) : still },
-    previous,
-    until,
-  }
-  if (previous) motion.onBufferEnd?.(until)
-
-  return comparison
-}
-
-/** Keep the loaded frame underneath while its replacement loads, then keep the replacement's key. */
-function bufferedSvg(els: Els, Svg: NonNullable<ReturnType<typeof svgOf>>, drawn: Buffered, now: number, width: number, height: number, alt: string): RenderElement {
-  const covers = drawn.previous !== undefined && now < drawn.until
-  const frame = (drawing: Drawing, above: boolean) => els.Box({
-    key: `drawing-${drawing.id}`,
-    ...(above ? { position: 'absolute' as const, top: 0, left: 0 } : {}),
-    children: [Svg({ alt, width, height, isInteractive: true, source: drawing.source })],
+    mark: site === 'card' && isProtected ? LEAD_MS[held.ttl] / lifetime : null,
+  }, {
+    pinging: pingAt !== null ? sinceShown(`${site}-ping`, pingAt, now) : null,
+    // A refill outranks the entrance: the arc is already on its way up.
+    sweep: refill !== null && sinceRefill !== null
+      ? { from: refill.from, since: sinceRefill, isRefill: true }
+      : entering !== null ? { from: 0, since: entering, isRefill: false } : null,
+    entering: sinceRefill === null ? entering : null,
   })
 
-  return els.Box({
-    position: 'relative',
-    flexDirection: 'column',
-    flexShrink: 0,
-    children: [...(covers ? [frame(drawn.previous!, false)] : []), frame(drawn.current, covers)],
-  })
+  return `<svg xmlns="http://www.w3.org/2000/svg" lang="${locale.tag}" viewBox="0 0 ${size} ${size}">${styleOf(locale.fonts)}${drawn}</svg>`
 }
 
 type LabelStyle = 'title' | 'body' | 'count' | 'small'
@@ -432,7 +369,7 @@ export function bandView(
     width: '100%',
     children: [
       Svg
-        ? bufferedSvg(els, Svg, ringDrawing('band', held, isSaved, motion, m), now, 18, 18, head)
+        ? Box({ flexShrink: 0, children: [Svg({ alt: head, width: 18, height: 18, source: ringSvg('band', held, isSaved, motion, null, m) })] })
         : Text({ color: remaining > 0 ? EMBER : SLATE, children: [remaining > 0 ? '●' : '○'] }),
       Text({ bold: true, ...emphasis, children: [head] }),
       Text({ dimColor: true, wrap: 'truncate-end', children: [detail] }),
@@ -487,7 +424,7 @@ export function paneView(
     const caption =
       remaining <= 0
         ? m.heroCold(tokens, costs ? fmtUsd(costs.rewriteUsd) : '')
-        : motion.isPinging
+        : motion.pingAt !== null
           ? m.heroPinging
           : planned > 0
           ? m.heroAuto(untilPing > 0 ? fmtRemaining(untilPing) : '', fmtSpan(remaining + planned * stretch))
@@ -503,27 +440,28 @@ export function paneView(
 
     if (Svg) {
       const card = cardSvg({ locale: m, figure, caption, isCold: remaining <= 0 })
-      // The plan, unlike its countdown, is a state: expiry is already in the ring's timeline.
       const isSaved = policy.isOn && left > 0
+      // The ring and the bars enter together as the panel opens.
+      const entering = motion.openedAt !== null ? sinceShown('card-open', motion.openedAt, motion.now, ENTER_MS) : null
       const drawings: RenderNode[] = [Box({
         flexDirection: 'row',
         columnGap: 2,
         alignItems: 'flex-start',
         children: [
-          bufferedSvg(els, Svg, ringDrawing('card', tracked, isSaved, motion, m), now, 60, 60, figure),
+          Box({ flexShrink: 0, children: [Svg({ alt: figure, width: 60, height: 60, source: ringSvg('card', tracked, isSaved, motion, entering, m) })] }),
           Svg({ alt: `${figure} ${caption}`, width: 238, height: card.height, source: card.source }),
         ],
       })]
       if (costs) {
-        const drawn = costsDrawing({
+        const source = costsSvg({
           lapseLabel: m.rowLapse,
           lapseUsd: fmtUsd(costs.rewriteUsd),
           pingLabel: m.rowPing,
           pingUsd: fmtUsd(costs.pingUsd),
           share,
           note,
-        }, motion, m)
-        drawings.push(bufferedSvg(els, Svg, drawn, now, PANEL_PIXELS, 94, `${m.rowLapse} ${fmtUsd(costs.rewriteUsd)} · ${m.rowPing} ${fmtUsd(costs.pingUsd)} · ${note}`))
+        }, m, entering)
+        drawings.push(Svg({ alt: `${m.rowLapse} ${fmtUsd(costs.rewriteUsd)} · ${m.rowPing} ${fmtUsd(costs.pingUsd)} · ${note}`, width: PANEL_PIXELS, height: 94, source }))
       }
       display.push(
         Box({ flexDirection: 'column', children: drawings }),
