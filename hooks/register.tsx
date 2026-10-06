@@ -16,6 +16,7 @@ import {
   extensionEvidence,
   isTracked,
   remainingOf,
+  resumedTtl,
   verdictOf,
 } from './model'
 import type { Extension, Observation, Verdict, View } from './model'
@@ -49,6 +50,8 @@ type PingResult = { text: string; verdict: Verdict | null }
 
 // What the environment pins the TTL to; undefined until first read.
 let configured: TtlChoice | null | undefined
+// The TTL Claude Code itself last named, at a model switch or on a resume; undefined until it has.
+let reported: Ttl | undefined
 // The store's record of whether pings extend the cache; undefined until first read.
 let extension: Extension | undefined
 // The store's log of touches; undefined until first read.
@@ -58,7 +61,8 @@ let spoken: { lang: Lang; source: LangSource } | undefined
 // The languages of Claude's recent replies, and the store's last followed language until first read.
 let heard: Record<string, number> = {}
 let heardLang: Lang | null | undefined
-let isPinging = false
+// When the ping under way went out; null with none.
+let pingAt: number | null = null
 // Main-thread requests under way: each touched the cache as it started.
 let inFlight = 0
 // What the panel's last button press came to, shown under its buttons.
@@ -71,11 +75,6 @@ let titledIn: Lang | undefined
 let openedAt: number | undefined
 // The touch that last refilled the cache, and the share of its lifetime left before it: the ring sweeps back from there.
 let refill: { at: number; from: number } | undefined
-// A survey unmounts the band's frame; its next appearance needs a fresh timeline.
-let bandHidden = false
-let bandEpoch = 0
-// Old frames can leave after their replacements have had time to load.
-const bufferEnds = new Set<number>()
 
 function isOn(value: string | undefined): boolean {
   return value === '1' || value === 'true'
@@ -170,8 +169,11 @@ async function resolveTtl($: EngineInterface, previous: Snapshot | null): Promis
   const plan = rateLimits.filter(one => one.kind === 'five_hour' || one.kind === 'seven_day')
   // A subscription inside its plan's usage gets the hour; over it, or off a subscription, five minutes.
   const isWithinPlan = plan.length > 0 && plan.every(one => one.percentUsed < 100)
+  // Claude Code's own word replaces the guess, except past the plan's usage: that ends the hour whatever it said before.
+  const isPastPlan = plan.length > 0 && !isWithinPlan
+  const guessed = isWithinPlan ? '1h' : '5m'
 
-  return { ttl: isWithinPlan ? '1h' : '5m', ttlSource: 'assumed' }
+  return { ttl: isPastPlan ? '5m' : (reported ?? guessed), ttlSource: 'assumed' }
 }
 
 async function observations($: EngineInterface): Promise<Observation[]> {
@@ -212,18 +214,9 @@ async function viewOf($: EngineInterface): Promise<View> {
   }
 }
 
-/** What the drawings should be moving at this moment. */
+/** The moment of a draw, and the events its movements run from. */
 async function motionOf($: EngineInterface): Promise<Motion> {
-  const now = await $.clock.now()
-
-  return {
-    now,
-    openedAt: openedAt ?? null,
-    refill: refill ?? null,
-    isPinging,
-    bandEpoch,
-    onBufferEnd: at => { bufferEnds.add(at) },
-  }
+  return { now: await $.clock.now(), openedAt: openedAt ?? null, refill: refill ?? null, pingAt }
 }
 
 /** Opens the panel, noting when. */
@@ -286,6 +279,9 @@ async function recordStep(
     }
   }
 
+  // Noted before the write: the redraw the write causes must already find it.
+  const at = await $.clock.now()
+  refill = { at, from: shareLeft(previous, at) }
   await update($, snap, () => ({
     touchedAt: startedAt,
     touchedBy: 'turn' as const,
@@ -298,7 +294,6 @@ async function recordStep(
     coldReason: null,
     lastPing: previous?.lastPing ?? null,
   }))
-  refill = { at: await $.clock.now(), from: shareLeft(previous, startedAt) }
   $.ui.invalidate('ui.render')
 }
 
@@ -307,13 +302,13 @@ async function ping($: EngineInterface, isForced: boolean): Promise<PingResult> 
   const m = MESSAGES[await langOf($)]
   const held = await read($, snap)
   if (!isTracked(held)) return { text: m.pingNothing, verdict: null }
-  if (isPinging) return { text: m.pingBusy, verdict: null }
+  if (pingAt !== null) return { text: m.pingBusy, verdict: null }
   const startedAt = await $.clock.now()
   if (remainingOf(held, startedAt) <= PING_MARGIN_MS && !isForced) {
     return { text: m.pingCold(coldWords(m, held, startedAt), fmtTokens(held.cachedTokens)), verdict: null }
   }
 
-  isPinging = true
+  pingAt = startedAt
   // The ring shows the ping going out, and again what came of it.
   $.ui.invalidate('ui.render')
   try {
@@ -350,6 +345,11 @@ async function ping($: EngineInterface, isForced: boolean): Promise<PingResult> 
       model: held.model,
       verdict,
     })
+    if (verdict === 'hit' || hasRewritten) {
+      // Noted before the write: the redraw the write causes must already find it.
+      const at = await $.clock.now()
+      refill = { at, from: shareLeft(held, at) }
+    }
     await update($, snap, now => {
       if (now === null) return now
       const pingsSinceTurn = now.pingsSinceTurn + 1
@@ -359,7 +359,6 @@ async function ping($: EngineInterface, isForced: boolean): Promise<PingResult> 
 
       return { ...now, pingsSinceTurn, coldReason: COLD_PING, lastPing }
     })
-    if (verdict === 'hit' || hasRewritten) refill = { at: await $.clock.now(), from: shareLeft(held, startedAt) }
 
     const counts = m.counts({
       read: fmtTokens(lastPing.read),
@@ -383,7 +382,7 @@ async function ping($: EngineInterface, isForced: boolean): Promise<PingResult> 
 
     return { text: hasRewritten ? m.pingRewrote(counts, cost) : m.pingMissed(counts, cost), verdict }
   } finally {
-    isPinging = false
+    pingAt = null
     $.ui.invalidate('ui.render')
   }
 }
@@ -403,22 +402,15 @@ export const register: Register = on => {
       }
       const held = await read($, snap)
       const now = await $.clock.now()
-      let bufferEnded = false
-      for (const at of bufferEnds) {
-        if (now >= at) {
-          bufferEnds.delete(at)
-          bufferEnded = true
-        }
-      }
       // The countdown: redraw only when its words change.
       const head = held === null ? '' : remainingOf(held, now) > 0 ? fmtRemaining(remainingOf(held, now)) : 'cold'
-      if (head !== lastHead || bufferEnded) {
+      if (head !== lastHead) {
         lastHead = head
         $.ui.invalidate('ui.render')
       }
 
       // The keep-alive. A request under way has already touched the cache.
-      if (held === null || isPinging || inFlight > 0) return
+      if (held === null || pingAt !== null || inFlight > 0) return
       const policy = await read($, auto)
       if (!policy.isOn) return
       const remaining = remainingOf(held, now)
@@ -456,7 +448,7 @@ export const register: Register = on => {
     if (isMain) inFlight += 1
     try {
       const result = yield* next(e)
-      if (isMain && !isPinging && result.usage !== null) {
+      if (isMain && pingAt === null && result.usage !== null) {
         await hear($, result.answer)
         await recordStep($, startedAt, e.index, result.usage)
       }
@@ -477,8 +469,10 @@ export const register: Register = on => {
       e.context_tokens !== undefined
     ) {
       const now = await $.clock.now()
+      const gapMs = e.seconds_since_last_response * 1000
+      reported = resumedTtl(gapMs, e.prompt_cache_likely_expired) ?? reported
       const choice = await resolveTtl($, null)
-      const touchedAt = now - e.seconds_since_last_response * 1000
+      const touchedAt = now - gapMs
       const cachedTokens = e.context_tokens
       const model = e.model ?? 'unknown'
       await update($, snap, () => ({
@@ -498,6 +492,12 @@ export const register: Register = on => {
   })
 
   on('classic.PostModelSwitch', async ($, e, next) => {
+    if (e.cache_ttl !== undefined) {
+      // Claude Code names the TTL it applies as it reports a switch; a cache still counting down takes it at once.
+      reported = e.cache_ttl
+      const choice = await resolveTtl($, await read($, snap))
+      await update($, snap, now => (now === null ? now : { ...now, ...choice }))
+    }
     if (e.from_model !== e.to_model) {
       const reason = COLD_MODEL + e.to_model
       await update($, snap, now => (now === null ? now : { ...now, coldReason: reason }))
@@ -548,16 +548,7 @@ export const register: Register = on => {
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const view = await viewOf($)
     const { held } = view
-    if (e.props.hasSurvey) {
-      bandHidden = true
-
-      return next(e)
-    }
-    if (!isTracked(held)) return next(e)
-    if (bandHidden) {
-      bandHidden = false
-      bandEpoch += 1
-    }
+    if (e.props.hasSurvey || !isTracked(held)) return next(e)
     const m = MESSAGES[await langOf($)]
     const beneath = await next(e)
     const els = $.ui.resolve(e)
