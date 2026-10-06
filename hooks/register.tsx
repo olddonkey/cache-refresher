@@ -16,6 +16,7 @@ import {
   extensionEvidence,
   isTracked,
   remainingOf,
+  resumedTtl,
   verdictOf,
 } from './model'
 import type { Extension, Observation, Verdict, View } from './model'
@@ -49,6 +50,8 @@ type PingResult = { text: string; verdict: Verdict | null }
 
 // What the environment pins the TTL to; undefined until first read.
 let configured: TtlChoice | null | undefined
+// The TTL Claude Code itself last named, at a model switch or on a resume; undefined until it has.
+let reported: Ttl | undefined
 // The store's record of whether pings extend the cache; undefined until first read.
 let extension: Extension | undefined
 // The store's log of touches; undefined until first read.
@@ -166,8 +169,11 @@ async function resolveTtl($: EngineInterface, previous: Snapshot | null): Promis
   const plan = rateLimits.filter(one => one.kind === 'five_hour' || one.kind === 'seven_day')
   // A subscription inside its plan's usage gets the hour; over it, or off a subscription, five minutes.
   const isWithinPlan = plan.length > 0 && plan.every(one => one.percentUsed < 100)
+  // Claude Code's own word replaces the guess, except past the plan's usage: that ends the hour whatever it said before.
+  const isPastPlan = plan.length > 0 && !isWithinPlan
+  const guessed = isWithinPlan ? '1h' : '5m'
 
-  return { ttl: isWithinPlan ? '1h' : '5m', ttlSource: 'assumed' }
+  return { ttl: isPastPlan ? '5m' : (reported ?? guessed), ttlSource: 'assumed' }
 }
 
 async function observations($: EngineInterface): Promise<Observation[]> {
@@ -463,8 +469,10 @@ export const register: Register = on => {
       e.context_tokens !== undefined
     ) {
       const now = await $.clock.now()
+      const gapMs = e.seconds_since_last_response * 1000
+      reported = resumedTtl(gapMs, e.prompt_cache_likely_expired) ?? reported
       const choice = await resolveTtl($, null)
-      const touchedAt = now - e.seconds_since_last_response * 1000
+      const touchedAt = now - gapMs
       const cachedTokens = e.context_tokens
       const model = e.model ?? 'unknown'
       await update($, snap, () => ({
@@ -484,6 +492,12 @@ export const register: Register = on => {
   })
 
   on('classic.PostModelSwitch', async ($, e, next) => {
+    if (e.cache_ttl !== undefined) {
+      // Claude Code names the TTL it applies as it reports a switch; a cache still counting down takes it at once.
+      reported = e.cache_ttl
+      const choice = await resolveTtl($, await read($, snap))
+      await update($, snap, now => (now === null ? now : { ...now, ...choice }))
+    }
     if (e.from_model !== e.to_model) {
       const reason = COLD_MODEL + e.to_model
       await update($, snap, now => (now === null ? now : { ...now, coldReason: reason }))
