@@ -41,6 +41,8 @@ export type View = {
   held: Snapshot | null
   now: number
   policy: Auto
+  /** What a session's switch starts as: what `/cache-auto default` saved. */
+  start: Auto
   known: Extension
   observations: readonly Observation[]
 }

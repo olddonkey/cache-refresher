@@ -56,6 +56,7 @@ const SAMPLES: Samples = {
   extendsYes: [{ args: ['5m'] }, { args: ['1h'] }],
   extendsUnknown: [{ args: ['5m'] }, { args: ['1h'] }],
   autoUsage: [{ args: [200] }],
+  autoStartOn: [{ args: [200] }],
   heroLeft: [{ args: ['1.23M'] }],
   heroAuto: [{ args: ['59m', '11.9h'] }, { args: ['', '11.9h'] }, { args: ['4:35', '59m'] }],
   heroCold: [{ args: ['1.23M', COST], free: [COST] }, { args: ['1.23M', ''] }],
@@ -187,7 +188,7 @@ const ROOMS: Partial<Record<keyof Messages, [number, number]>> = {
   autoTitle: [14, 200], autoPlanOff: [14, 200], autoPlanOn: [14, 200],
   autoTrialOff: [14, 200], autoTrialOn: [14, 200], autoSpent: [14, 200], autoNotWorth: [14, 200],
   historyAll: [12, 120], historySome: [12, 120], historyEmpty: [12, 200],
-  breakEven: [12, 314], breakEvenNone: [12, 314], priceNote: [12, 314], listPrice: [12, 314],
+  breakEven: [12, 314], breakEvenNone: [12, 314], priceNote: [12, 314], listPrice: [12, 314], paneStartOn: [12, 314],
   rowLapse: [14, 110], rowPing: [14, 110],
   btnOn: [13, 60], btnOff: [13, 60], btnPing: [13, 90], details: [13, 80],
 }

@@ -22,7 +22,7 @@ export const gu: Messages = {
   cmdStatus: 'Prompt cache ની સ્થિતિ, બાકી સમય અને ફરી બનાવવાનો અંદાજિત ખર્ચ જુઓ',
   cmdPing: 'Prompt cache હમણાં refresh કરો',
   cmdAuto: 'Auto-refresh ની સેટિંગ જુઓ અથવા બદલો',
-  cmdAutoHint: '[on|off] [refresh મર્યાદા]',
+  cmdAutoHint: '[default] [on|off] [refresh મર્યાદા]',
   cmdLang: 'ઇન્ટરફેસની ભાષા પસંદ કરો',
   cmdLangHint: '[auto|code]',
 
@@ -79,7 +79,11 @@ export const gu: Messages = {
   extendsNo: 'ખાતરી નથી. છેલ્લા refresh પછી cache miss થયો, એટલે દરેક નિષ્ક્રિય સમયગાળામાં માત્ર એક auto-refresh મોકલાય છે',
   extendsUnknown: ttl => `હજી ખાતરી નથી. Refresh થી પૂરી ${spanGu(ttl)} ની મુદત મળે તેની ખાતરી થાય ત્યાં સુધી દરેક નિષ્ક્રિય સમયગાળામાં માત્ર એક auto-refresh મોકલાય છે`,
   autoNote: '  નોંધ: ઍપ ચાલુ હોય અને કમ્પ્યુટર જાગતું હોય ત્યારે જ refresh મોકલાય છે. દરેક refresh પ્લાનના ઉપયોગ અથવા API ક્રેડિટમાં ગણાય છે',
-  autoUsage: max => `ઉપયોગ: /cache-auto [on|off] [દરેક નિષ્ક્રિય સમયગાળાની refresh મર્યાદા, 1-${max}]`,
+  autoUsage: max => `ઉપયોગ: /cache-auto [default] [on|off] [દરેક નિષ્ક્રિય સમયગાળાની refresh મર્યાદા, 1-${max}]`,
+
+  autoStartOn: cap => `  નવાં સત્રો: auto-refresh ચાલુ, દરેક નિષ્ક્રિય સમયગાળામાં વધુમાં વધુ ${cap} (/cache-auto default off થી બંધ કરો)`,
+  autoStartOff: '  નવાં સત્રો: auto-refresh બંધ (/cache-auto default on થી દરેક નવા સત્રમાં ચાલુ કરો)',
+  paneStartOn: 'નવાં સત્રોમાં ડિફૉલ્ટ રૂપે ચાલુ',
 
   details: 'વિગતો ›',
   cmdPanel: 'Prompt cache પેનલ ખોલો',

@@ -22,7 +22,7 @@ export const ta: Messages = {
   cmdStatus: 'Prompt cache நிலை, மீதமுள்ள நேரம், மீள உருவாக்கும் செலவின் மதிப்பீட்டைக் காணவும்',
   cmdPing: 'Prompt cache-ஐ இப்போது refresh செய்யவும்',
   cmdAuto: 'Auto-refresh அமைப்புகளைக் காணவும் அல்லது மாற்றவும்',
-  cmdAutoHint: '[on|off] [refresh வரம்பு]',
+  cmdAutoHint: '[default] [on|off] [refresh வரம்பு]',
   cmdLang: 'இடைமுக மொழியைத் தேர்ந்தெடுக்கவும்',
   cmdLangHint: '[auto|code]',
 
@@ -79,7 +79,11 @@ export const ta: Messages = {
   extendsNo: 'உறுதிப்படுத்தப்படவில்லை. கடைசி refresh-க்குப் பிறகு cache miss ஏற்பட்டது, எனவே ஒவ்வொரு செயலற்ற காலத்திலும் ஒரே ஒரு auto-refresh அனுப்பப்படும்',
   extendsUnknown: ttl => `இன்னும் உறுதிப்படுத்தப்படவில்லை. Refresh முழு ${spanTa(ttl)} காலத்தை மீட்டுத் தருவது உறுதியாகும் வரை ஒவ்வொரு செயலற்ற காலத்திலும் ஒரே ஒரு auto-refresh அனுப்பப்படும்`,
   autoNote: '  குறிப்பு: செயலி இயங்கும்போதும் கணினி விழித்திருக்கும்போதும் மட்டுமே refresh அனுப்பப்படும். ஒவ்வொன்றும் திட்டப் பயன்பாடு அல்லது API கிரெடிட்டில் கணக்கிடப்படும்',
-  autoUsage: max => `பயன்பாடு: /cache-auto [on|off] [ஒவ்வொரு செயலற்ற காலத்திற்கான refresh வரம்பு, 1-${max}]`,
+  autoUsage: max => `பயன்பாடு: /cache-auto [default] [on|off] [ஒவ்வொரு செயலற்ற காலத்திற்கான refresh வரம்பு, 1-${max}]`,
+
+  autoStartOn: cap => `  புதிய அமர்வுகள்: auto-refresh இயக்கப்பட்டுள்ளது, ஒவ்வொரு செயலற்ற காலத்திலும் அதிகபட்சம் ${cap} முறை (/cache-auto default off மூலம் முடக்கலாம்)`,
+  autoStartOff: '  புதிய அமர்வுகள்: auto-refresh முடக்கப்பட்டுள்ளது (/cache-auto default on மூலம் ஒவ்வொரு புதிய அமர்விலும் இயக்கலாம்)',
+  paneStartOn: 'புதிய அமர்வுகளில் இயல்பாக இயங்கும்',
 
   details: 'விவரம் ›',
   cmdPanel: 'Prompt cache பேனலைத் திறக்கவும்',
