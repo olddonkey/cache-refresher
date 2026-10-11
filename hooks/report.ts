@@ -13,6 +13,13 @@ function pingCounts(m: Messages, ping: { read: number; created: number; input: n
 }
 
 export function autoLines(m: Messages, view: View): string[] {
+  const lines = switchLines(m, view)
+
+  // A switch that starts on in every session says so wherever it is reported.
+  return view.start.isOn ? [...lines, m.autoStartOn(view.start.cap)] : lines
+}
+
+function switchLines(m: Messages, view: View): string[] {
   const { held, policy, known, now } = view
   if (!policy.isOn) return [m.autoOff]
   if (!isTracked(held)) return [m.autoWaiting(policy.cap)]

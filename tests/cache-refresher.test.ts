@@ -401,6 +401,144 @@ test('auto keep-alive stays off until it is turned on', { timeoutMs: 30_000 }, a
   expect(status.text).toContain('Auto-refresh: off')
 })
 
+test('a saved start turns auto-refresh on in a session where nobody ran /cache-auto, and the session can still turn it off', { timeoutMs: 30_000 }, async ($, on) => {
+  const clock = mock.clock(on, { now: START })
+  mock.store(on, { autoDefault: { isOn: true, cap: 3 } })
+  mock.env(on, HOUR_ENV)
+  let forks = 0
+  on('model.fork', () => {
+    forks += 1
+
+    return forkHit()
+  })
+  on('turn.step', async function* (_, e) {
+    return { turnId: e.turnId, index: e.index, answer: 'hi', toolUses: [], stopReason: 'end_turn', usage: usage(0, 80_000) }
+  })
+
+  await boot($, on)
+  const step = $.turn.step({ turnId: 't1', index: 0, model: 'claude-sonnet-5-5', messageCount: 1 })
+  for await (const _ of step) void _
+  await step.result
+  const started = await $.command.run({ command: 'cache-auto', args: '' })
+  expect(started.text).toContain('on, 0 of 1 used since your last message (limit 3)')
+  expect(started.text).toContain('New sessions: auto-refresh on, up to 3 per idle period')
+  expect((await $.command.run({ command: 'cache-status', args: '' })).text).toContain('New sessions: auto-refresh on, up to 3 per idle period')
+
+  await clock.advance(56 * MINUTE)
+  expect(forks).toBe(1)
+
+  // Turned off, this session stays off, and is still told that the next one starts on.
+  const off = await $.command.run({ command: 'cache-auto', args: 'off' })
+  expect(off.text).toContain('Auto-refresh: off')
+  expect(off.text).toContain('New sessions: auto-refresh on, up to 3 per idle period')
+  await clock.advance(120 * MINUTE)
+  expect(forks).toBe(1)
+})
+
+test('/cache-auto default saves what every session starts with, and a session-only change leaves it alone', async ($, on) => {
+  mock.clock(on, { now: START })
+  mock.env(on, HOUR_ENV)
+  const saved = new Map<string, unknown>()
+  on('store.get', (_, e) => ({ value: saved.get(e.key) }))
+  on('store.set', (_, e) => {
+    saved.set(e.key, e.value)
+
+    return { value: undefined }
+  })
+  on('ui.invalidate', () => ({ value: undefined }))
+
+  const set = await $.command.run({ command: 'cache-auto', args: 'default on 4' })
+  expect(set.text).toContain('on, up to 4 per idle period. Waiting for the first response')
+  expect(set.text).toContain('New sessions: auto-refresh on, up to 4 per idle period')
+  expect(saved.get('autoDefault')).toEqual({ isOn: true, cap: 4 })
+
+  const sessionOnly = await $.command.run({ command: 'cache-auto', args: 'off 9' })
+  expect(sessionOnly.text).toContain('Auto-refresh: off')
+  expect(saved.get('autoDefault')).toEqual({ isOn: true, cap: 4 })
+
+  // What it cannot use, `default` refuses rather than ignores.
+  for (const args of ['default soon', 'default on 0', 'default on 1.5', 'default on 201', 'default on off']) {
+    expect((await $.command.run({ command: 'cache-auto', args })).text).toContain('Usage: /cache-auto [default] [on|off]')
+  }
+  expect(saved.get('autoDefault')).toEqual({ isOn: true, cap: 4 })
+
+  // The word may come anywhere, and a start saved without a number keeps its own limit, not the session's.
+  const turnedOff = await $.command.run({ command: 'cache-auto', args: 'off default' })
+  expect(turnedOff.text).toContain('New sessions: auto-refresh off')
+  expect(saved.get('autoDefault')).toEqual({ isOn: false, cap: 4 })
+})
+
+test('a session following the saved start reads it again before it sends', { timeoutMs: 30_000 }, async ($, on) => {
+  const clock = mock.clock(on, { now: START })
+  mock.env(on, HOUR_ENV)
+  const saved = new Map<string, unknown>([['autoDefault', { isOn: true, cap: 3 }]])
+  on('store.get', (_, e) => ({ value: saved.get(e.key) }))
+  on('store.set', (_, e) => {
+    saved.set(e.key, e.value)
+
+    return { value: undefined }
+  })
+  let forks = 0
+  on('model.fork', () => {
+    forks += 1
+
+    return forkHit()
+  })
+  on('turn.step', async function* (_, e) {
+    return { turnId: e.turnId, index: e.index, answer: 'hi', toolUses: [], stopReason: 'end_turn', usage: usage(0, 80_000) }
+  })
+
+  await boot($, on)
+  const step = $.turn.step({ turnId: 't1', index: 0, model: 'claude-sonnet-5-5', messageCount: 1 })
+  for await (const _ of step) void _
+  await step.result
+  await clock.advance(10 * MINUTE)
+  // Another session turns the saved start off while this one sits idle.
+  saved.set('autoDefault', { isOn: false, cap: 3 })
+  await clock.advance(120 * MINUTE)
+  expect(forks).toBe(0)
+})
+
+test('the panel says when its switch starts on in every session', { timeoutMs: 30_000 }, async ($, on) => {
+  mock.clock(on, { now: START })
+  mock.store(on, { autoDefault: { isOn: true, cap: 12 } })
+  mock.env(on, HOUR_ENV)
+  on('ui.invalidate', () => ({ value: undefined }))
+  const props = { title: 'Prompt cache', isFocused: true, bodyColumns: 60, placement: 'dock' as const, scroll: { offset: 0, bodyRows: 40 }, view: {} }
+  const note = 'On by default in new sessions'
+
+  const term = await $.ui.mount({ plugin: 'cache-refresher', surface: 'terminal', component: 'Pane', requestId: 'cache', props })
+  expect((await term.find({ key: 'auto-toggle' }))?.text).toContain('Turn off')
+  expect(await term.find({ type: 'Text', text: note })).toBeDefined()
+  // Turned off here, the note stays: the next session starts on again.
+  await term.press({ key: 'auto-toggle' })
+  expect((await term.find({ key: 'auto-toggle' }))?.text).toContain('Turn on')
+  expect(await term.find({ type: 'Text', text: note })).toBeDefined()
+  await term.unmount()
+
+  const desk = await $.ui.mount({ plugin: 'cache-refresher', surface: 'desktop', component: 'Pane', requestId: 'cache', props })
+  expect((await desk.findAll({ type: 'Svg' })).filter(one => one.props.alt === note)).toHaveLength(1)
+  await desk.unmount()
+})
+
+test('with nothing saved nothing is said about new sessions, except by /cache-auto', { timeoutMs: 30_000 }, async ($, on) => {
+  mock.clock(on, { now: START })
+  mock.store(on)
+  mock.env(on, HOUR_ENV)
+  on('ui.invalidate', () => ({ value: undefined }))
+  const props = { title: 'Prompt cache', isFocused: true, bodyColumns: 60, placement: 'dock' as const, scroll: { offset: 0, bodyRows: 40 }, view: {} }
+
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const pane = await $.ui.mount({ plugin: 'cache-refresher', surface, component: 'Pane', requestId: 'cache', props })
+    expect((await pane.find({ key: 'auto-toggle' }))?.text).toContain('Turn on')
+    expect(await pane.find({ type: 'Text', text: 'On by default in new sessions' })).toBeUndefined()
+    expect((await pane.findAll({ type: 'Svg' })).filter(one => one.props.alt === 'On by default in new sessions')).toHaveLength(0)
+    await pane.unmount()
+  }
+  expect((await $.command.run({ command: 'cache-auto', args: '' })).text).toContain('New sessions: auto-refresh off (/cache-auto default on')
+  expect((await $.command.run({ command: 'cache-status', args: '' })).text).not.toContain('New sessions')
+})
+
 test('auto sends one ping per idle stretch until a ping is proven to extend the cache', { timeoutMs: 30_000 }, async ($, on) => {
   const clock = mock.clock(on, { now: START })
   mock.store(on)

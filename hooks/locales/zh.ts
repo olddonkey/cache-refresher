@@ -30,7 +30,7 @@ export const zh: Messages = {
   cmdStatus: '查看提示缓存状态、剩余时间和预计重建成本',
   cmdPing: '立即为提示缓存续期',
   cmdAuto: '查看或设置自动续期',
-  cmdAutoHint: '[on|off] [次数上限]',
+  cmdAutoHint: '[default] [on|off] [次数上限]',
   cmdLang: '设置显示语言',
   cmdLangHint: '[auto|语言代码]',
 
@@ -87,7 +87,11 @@ export const zh: Messages = {
   extendsNo: '未验证，续期后的下一次请求未命中，因此每次空闲期间只自动续期 1 次',
   extendsUnknown: ttl => `待验证，确认续期能重新获得 ${spanZh(ttl)}有效期之前，每次空闲期间只自动续期 1 次`,
   autoNote: '  注意：仅在应用运行且电脑未休眠时才会续期；每次续期都会消耗套餐额度或产生 API 费用',
-  autoUsage: max => `用法：/cache-auto [on|off] [每次空闲期间的次数上限，1-${max}]`,
+  autoUsage: max => `用法：/cache-auto [default] [on|off] [每次空闲期间的次数上限，1-${max}]`,
+
+  autoStartOn: cap => `  新会话：默认开启自动续期，每次空闲期间最多 ${cap} 次（运行 /cache-auto default off 可关闭）`,
+  autoStartOff: '  新会话：默认关闭自动续期（运行 /cache-auto default on 可让每个新会话默认开启）',
+  paneStartOn: '新会话默认开启',
 
   details: '详情 ›',
   cmdPanel: '打开提示缓存面板',

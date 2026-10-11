@@ -23,7 +23,7 @@ export const hi: Messages = {
   cmdStatus: 'Prompt cache की स्थिति, बचा समय और फिर बनाने की अनुमानित लागत देखें',
   cmdPing: 'Prompt cache अभी refresh करें',
   cmdAuto: 'Auto-refresh की सेटिंग देखें या बदलें',
-  cmdAutoHint: '[on|off] [refresh सीमा]',
+  cmdAutoHint: '[default] [on|off] [refresh सीमा]',
   cmdLang: 'इंटरफ़ेस की भाषा चुनें',
   cmdLangHint: '[auto|code]',
 
@@ -80,7 +80,11 @@ export const hi: Messages = {
   extendsNo: 'पुष्टि नहीं हुई। पिछले refresh के बाद cache miss हुआ, इसलिए हर निष्क्रिय अवधि में केवल एक auto-refresh भेजा जाता है',
   extendsUnknown: ttl => `अभी पुष्टि नहीं हुई। Refresh से पूरे ${spanHi(ttl)} की अवधि मिलने की पुष्टि तक हर निष्क्रिय अवधि में केवल एक auto-refresh भेजा जाता है`,
   autoNote: '  ध्यान दें: refresh केवल ऐप चलने और कंप्यूटर जागने पर भेजे जाते हैं। हर refresh प्लान के उपयोग या API क्रेडिट में गिना जाता है',
-  autoUsage: max => `इस्तेमाल: /cache-auto [on|off] [हर निष्क्रिय अवधि की refresh सीमा, 1-${max}]`,
+  autoUsage: max => `इस्तेमाल: /cache-auto [default] [on|off] [हर निष्क्रिय अवधि की refresh सीमा, 1-${max}]`,
+
+  autoStartOn: cap => `  नए सत्र: auto-refresh चालू, हर निष्क्रिय अवधि में अधिकतम ${cap} (/cache-auto default off से बंद करें)`,
+  autoStartOff: '  नए सत्र: auto-refresh बंद (/cache-auto default on से हर नए सत्र में चालू करें)',
+  paneStartOn: 'नए सत्रों में डिफ़ॉल्ट रूप से चालू',
 
   details: 'विवरण ›',
   cmdPanel: 'Prompt cache पैनल खोलें',

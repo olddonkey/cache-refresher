@@ -22,7 +22,7 @@ export const bn: Messages = {
   cmdStatus: 'Prompt cache-এর অবস্থা, বাকি সময় ও আবার তৈরির আনুমানিক খরচ দেখুন',
   cmdPing: 'Prompt cache এখনই refresh করুন',
   cmdAuto: 'Auto-refresh-এর সেটিং দেখুন বা বদলান',
-  cmdAutoHint: '[on|off] [refresh-এর সীমা]',
+  cmdAutoHint: '[default] [on|off] [refresh-এর সীমা]',
   cmdLang: 'ইন্টারফেসের ভাষা বেছে নিন',
   cmdLangHint: '[auto|code]',
 
@@ -79,7 +79,11 @@ export const bn: Messages = {
   extendsNo: 'নিশ্চিত নয়। শেষ refresh-এর পরে cache miss হয়েছে, তাই প্রতি নিষ্ক্রিয় সময়ে একবারই auto-refresh পাঠানো হয়',
   extendsUnknown: ttl => `এখনও নিশ্চিত নয়। Refresh পুরো ${spanBn(ttl)} মেয়াদ ফিরিয়ে দেয় বলে নিশ্চিত হওয়া পর্যন্ত প্রতি নিষ্ক্রিয় সময়ে একবারই auto-refresh পাঠানো হয়`,
   autoNote: '  নোট: অ্যাপ চালু ও কম্পিউটার জেগে থাকলেই refresh পাঠানো হয়। প্রতিটি refresh প্ল্যানের ব্যবহার বা API ক্রেডিটে গণনা হয়',
-  autoUsage: max => `ব্যবহার: /cache-auto [on|off] [প্রতি নিষ্ক্রিয় সময়ে refresh-এর সীমা, 1-${max}]`,
+  autoUsage: max => `ব্যবহার: /cache-auto [default] [on|off] [প্রতি নিষ্ক্রিয় সময়ে refresh-এর সীমা, 1-${max}]`,
+
+  autoStartOn: cap => `  নতুন সেশন: auto-refresh চালু, প্রতি নিষ্ক্রিয় সময়ে সর্বোচ্চ ${cap} বার (/cache-auto default off দিয়ে বন্ধ করুন)`,
+  autoStartOff: '  নতুন সেশন: auto-refresh বন্ধ (/cache-auto default on দিয়ে প্রতিটি নতুন সেশনে চালু করুন)',
+  paneStartOn: 'নতুন সেশনে ডিফল্টভাবে চালু',
 
   details: 'বিস্তারিত ›',
   cmdPanel: 'Prompt cache প্যানেল খুলুন',

@@ -22,7 +22,7 @@ export const te: Messages = {
   cmdStatus: 'Prompt cache స్థితి, మిగిలిన సమయం, మళ్లీ నిర్మించే అంచనా ఖర్చు చూడండి',
   cmdPing: 'Prompt cache ఇప్పుడే refresh చేయండి',
   cmdAuto: 'Auto-refresh సెట్టింగ్‌లు చూడండి లేదా మార్చండి',
-  cmdAutoHint: '[on|off] [refresh పరిమితి]',
+  cmdAutoHint: '[default] [on|off] [refresh పరిమితి]',
   cmdLang: 'ఇంటర్‌ఫేస్ భాష ఎంచుకోండి',
   cmdLangHint: '[auto|code]',
 
@@ -79,7 +79,11 @@ export const te: Messages = {
   extendsNo: 'నిర్ధారించలేదు. చివరి refresh తర్వాత cache miss అయింది, అందుకే ప్రతి నిష్క్రియ సమయంలో ఒక్క auto-refresh మాత్రమే పంపుతుంది',
   extendsUnknown: ttl => `ఇంకా నిర్ధారించలేదు. Refresh పూర్తి ${spanTe(ttl)} గడువును తిరిగి ఇస్తుందని నిర్ధారించే వరకు ప్రతి నిష్క్రియ సమయంలో ఒక్క auto-refresh మాత్రమే పంపుతుంది`,
   autoNote: '  గమనిక: యాప్ నడుస్తూ, కంప్యూటర్ మేల్కొని ఉన్నప్పుడే refresh లు పంపబడతాయి. ప్రతిదీ ప్లాన్ వాడకం లేదా API క్రెడిట్‌లో లెక్కించబడుతుంది',
-  autoUsage: max => `వాడకం: /cache-auto [on|off] [ప్రతి నిష్క్రియ సమయంలో refresh పరిమితి, 1-${max}]`,
+  autoUsage: max => `వాడకం: /cache-auto [default] [on|off] [ప్రతి నిష్క్రియ సమయంలో refresh పరిమితి, 1-${max}]`,
+
+  autoStartOn: cap => `  కొత్త సెషన్‌లు: auto-refresh ఆన్, ప్రతి నిష్క్రియ సమయంలో గరిష్ఠంగా ${cap} (/cache-auto default off తో ఆఫ్ చేయండి)`,
+  autoStartOff: '  కొత్త సెషన్‌లు: auto-refresh ఆఫ్ (/cache-auto default on తో ప్రతి కొత్త సెషన్‌లో ఆన్ చేయండి)',
+  paneStartOn: 'కొత్త సెషన్‌లలో డిఫాల్ట్‌గా ఆన్',
 
   details: 'వివరాలు ›',
   cmdPanel: 'Prompt cache ప్యానెల్ తెరవండి',

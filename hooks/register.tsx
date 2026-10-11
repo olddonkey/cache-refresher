@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, ModelUsage, Register } from 'claude-code'
 
-import type { Snapshot, Ttl } from '../types'
+import type { Auto, Snapshot, Ttl } from '../types'
 import { detect, follow } from './detect'
 import { PING_MARGIN_MS, TTL_MS, WRITE_MULTIPLIER, fmtRemaining, fmtTokens, fmtUsd, priceOf } from './economics'
 import { LANGS, MESSAGES, langFrom } from './messages'
@@ -30,10 +30,9 @@ const MAX_CAP = 200
 const PANE = 'cache'
 
 const snap = atom({ plugin: 'cache-refresher', key: 'snapshot' } as const, null)
-const auto = atom({ plugin: 'cache-refresher', key: 'auto' } as const, {
-  isOn: false,
-  cap: DEFAULT_CAP,
-})
+// The session's own switch: null until the person changes it, so a session that never has follows what
+// `/cache-auto default` saved, a fresh one after /clear included.
+const auto = atom({ plugin: 'cache-refresher', key: 'auto' } as const, null)
 
 const PING_PROMPT =
   'Prompt-cache keep-alive from the cache-refresher plugin. Reply with exactly: ok'
@@ -41,6 +40,7 @@ const PING_PROMPT =
 const OBSERVATIONS = 'observations'
 const MAX_OBSERVATIONS = 100
 const EXTENDS = 'pingExtends'
+const AUTO_DEFAULT = 'autoDefault'
 const LANG = 'lang'
 const HEARD = 'langHeard'
 
@@ -48,6 +48,8 @@ type TtlChoice = Pick<Snapshot, 'ttl' | 'ttlSource'>
 
 type PingResult = { text: string; verdict: Verdict | null }
 
+// What every session's switch starts as, as the store has it; undefined until first read.
+let start: Auto | undefined
 // What the environment pins the TTL to; undefined until first read.
 let configured: TtlChoice | null | undefined
 // The TTL Claude Code itself last named, at a model switch or on a resume; undefined until it has.
@@ -204,11 +206,38 @@ async function learnExtension($: EngineInterface, ttl: Ttl, doesExtend: boolean)
   await $.store.set(EXTENDS, extension)
 }
 
+/**
+ * What a session's switch starts as: what `/cache-auto default` saved, off until it has.
+ * Another session may save while this one runs, so `isFresh` reads the store again.
+ */
+async function startOf($: EngineInterface, isFresh = false): Promise<Auto> {
+  if (start === undefined || isFresh) {
+    const held = await $.store.get(AUTO_DEFAULT)
+    const { isOn, cap } = typeof held === 'object' && held !== null ? (held as Partial<Auto>) : {}
+    const isInRange = typeof cap === 'number' && Number.isInteger(cap) && cap >= 1 && cap <= MAX_CAP
+    start = { isOn: isOn === true, cap: isInRange ? cap : DEFAULT_CAP }
+  }
+
+  return start
+}
+
+/** The switch in force: the session's own once the person has changed it, the saved start until then. */
+async function policyOf($: EngineInterface): Promise<Auto> {
+  return (await read($, auto)) ?? (await startOf($))
+}
+
+/** Changes the session's switch, from what is in force. */
+async function setPolicy($: EngineInterface, change: (now: Auto) => Auto): Promise<void> {
+  const base = await startOf($)
+  await update($, auto, own => change(own ?? base))
+}
+
 async function viewOf($: EngineInterface): Promise<View> {
   return {
     held: await read($, snap),
     now: await $.clock.now(),
-    policy: await read($, auto),
+    policy: await policyOf($),
+    start: await startOf($),
     known: await knownExtension($),
     observations: await observations($),
   }
@@ -221,6 +250,7 @@ async function motionOf($: EngineInterface): Promise<Motion> {
 
 /** Opens the panel, noting when. */
 async function openPane($: EngineInterface, title: string): Promise<void> {
+  await startOf($, true)
   openedAt = await $.clock.now()
   await $.ui.open({ id: PANE, title, focus: true, closeOnEscape: true })
 }
@@ -411,12 +441,18 @@ export const register: Register = on => {
 
       // The keep-alive. A request under way has already touched the cache.
       if (held === null || pingAt !== null || inFlight > 0) return
-      const policy = await read($, auto)
+      const policy = await policyOf($)
       if (!policy.isOn) return
       const remaining = remainingOf(held, now)
       if (remaining <= PING_MARGIN_MS || remaining > LEAD_MS[held.ttl]) return
       const budget = budgetOf(held, policy.cap, await knownExtension($))
       if (held.pingsSinceTurn >= budget) return
+      // A session still following the saved start reads it once more: another session may have turned it off.
+      if ((await read($, auto)) === null && !(await startOf($, true)).isOn) {
+        $.ui.invalidate('ui.render')
+
+        return
+      }
       const sent = await ping($, false)
       $.ui.log(m.autoLog(held.pingsSinceTurn + 1, budget, sent.text))
       if (sent.verdict !== 'hit') $.ui.toast(m.autoMissToast)
@@ -507,6 +543,8 @@ export const register: Register = on => {
   })
 
   on('command.run', { command: 'cache-status' }, async $ => {
+    await startOf($, true)
+
     return { text: report(MESSAGES[await langOf($)], await viewOf($)) }
   })
 
@@ -522,18 +560,30 @@ export const register: Register = on => {
 
   on('command.run', { command: 'cache-auto' }, async ($, e) => {
     const m = MESSAGES[await langOf($)]
-    const words = e.args.trim().split(/\s+/).filter(Boolean)
+    const all = e.args.trim().split(/\s+/).filter(Boolean)
+    // With `default`, what is set is also saved as what every session starts with.
+    const isDefault = all.includes('default')
+    const words = all.filter(word => word !== 'default')
     const wanted = words.find(word => word === 'on' || word === 'off')
     const cap = words.map(Number).find(n => Number.isInteger(n) && n > 0 && n <= MAX_CAP)
     if (words.length > 0 && wanted === undefined && cap === undefined) return { text: m.autoUsage(MAX_CAP) }
+    // What is saved outlasts the session, so `default` takes no word it would have to ignore.
+    if (isDefault && words.some(word => word !== wanted && Number(word) !== cap)) return { text: m.autoUsage(MAX_CAP) }
+    const saved = await startOf($, true)
     if (words.length > 0) {
-      await update($, auto, now => ({
-        isOn: wanted === undefined ? true : wanted === 'on',
-        cap: cap ?? now.cap,
-      }))
+      const isOn = wanted === undefined ? true : wanted === 'on'
+      if (isDefault) {
+        start = { isOn, cap: cap ?? saved.cap }
+        await $.store.set(AUTO_DEFAULT, start)
+      }
+      await setPolicy($, now => ({ isOn, cap: cap ?? now.cap }))
     }
 
-    return { text: [m.autoHeader, ...autoLines(m, await viewOf($)), m.autoNote].join('\n') }
+    const view = await viewOf($)
+    // Off is the usual start and goes unsaid elsewhere; here it tells how to change it.
+    const lines = [...autoLines(m, view), ...(view.start.isOn ? [] : [m.autoStartOff])]
+
+    return { text: [m.autoHeader, ...lines, m.autoNote].join('\n') }
   })
 
   on('command.run', { command: 'cache-lang' }, async ($, e) => {
@@ -562,13 +612,13 @@ export const register: Register = on => {
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     return paneView($.ui.resolve(e), e.surface, MESSAGES[await langOf($)], await viewOf($), lastAction, {
       onToggle: () => {
-        void update($, auto, held => ({ ...held, isOn: !held.isOn }))
+        void setPolicy($, held => ({ ...held, isOn: !held.isOn }))
       },
       onCapDown: () => {
-        void update($, auto, held => ({ ...held, cap: Math.max(1, held.cap - 1) }))
+        void setPolicy($, held => ({ ...held, cap: Math.max(1, held.cap - 1) }))
       },
       onCapUp: () => {
-        void update($, auto, held => ({ ...held, cap: Math.min(MAX_CAP, held.cap + 1) }))
+        void setPolicy($, held => ({ ...held, cap: Math.min(MAX_CAP, held.cap + 1) }))
       },
       onPing: async () => {
         lastAction = (await ping($, false)).text

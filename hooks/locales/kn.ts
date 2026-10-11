@@ -22,7 +22,7 @@ export const kn: Messages = {
   cmdStatus: 'Prompt cache ಸ್ಥಿತಿ, ಉಳಿದ ಸಮಯ ಮತ್ತು ಮರುನಿರ್ಮಾಣದ ಅಂದಾಜು ವೆಚ್ಚ ನೋಡಿ',
   cmdPing: 'Prompt cache ಈಗ refresh ಮಾಡಿ',
   cmdAuto: 'Auto-refresh ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ನೋಡಿ ಅಥವಾ ಬದಲಿಸಿ',
-  cmdAutoHint: '[on|off] [refresh ಮಿತಿ]',
+  cmdAutoHint: '[default] [on|off] [refresh ಮಿತಿ]',
   cmdLang: 'ಇಂಟರ್‌ಫೇಸ್ ಭಾಷೆ ಆರಿಸಿ',
   cmdLangHint: '[auto|code]',
 
@@ -79,7 +79,11 @@ export const kn: Messages = {
   extendsNo: 'ದೃಢಪಟ್ಟಿಲ್ಲ. ಕೊನೆಯ refresh ನಂತರ cache miss ಆಗಿದೆ, ಆದ್ದರಿಂದ ಪ್ರತಿ ನಿಷ್ಕ್ರಿಯ ಅವಧಿಯಲ್ಲಿ ಒಂದೇ auto-refresh ಕಳುಹಿಸುತ್ತದೆ',
   extendsUnknown: ttl => `ಇನ್ನೂ ದೃಢಪಟ್ಟಿಲ್ಲ. Refresh ಪೂರ್ಣ ${spanKn(ttl)} ಅವಧಿಯನ್ನು ಮರಳಿ ಕೊಡುತ್ತದೆ ಎಂದು ದೃಢವಾಗುವವರೆಗೆ ಪ್ರತಿ ನಿಷ್ಕ್ರಿಯ ಅವಧಿಯಲ್ಲಿ ಒಂದೇ auto-refresh ಕಳುಹಿಸುತ್ತದೆ`,
   autoNote: '  ಸೂಚನೆ: ಆ್ಯಪ್ ಚಾಲನೆಯಲ್ಲಿದ್ದು ಕಂಪ್ಯೂಟರ್ ಎಚ್ಚರವಿದ್ದಾಗ ಮಾತ್ರ refresh ಕಳುಹಿಸಲಾಗುತ್ತದೆ. ಪ್ರತಿಯೊಂದೂ ಪ್ಲಾನ್ ಬಳಕೆ ಅಥವಾ API ಕ್ರೆಡಿಟ್‌ನಲ್ಲಿ ಲೆಕ್ಕವಾಗುತ್ತದೆ',
-  autoUsage: max => `ಬಳಕೆ: /cache-auto [on|off] [ಪ್ರತಿ ನಿಷ್ಕ್ರಿಯ ಅವಧಿಯ refresh ಮಿತಿ, 1-${max}]`,
+  autoUsage: max => `ಬಳಕೆ: /cache-auto [default] [on|off] [ಪ್ರತಿ ನಿಷ್ಕ್ರಿಯ ಅವಧಿಯ refresh ಮಿತಿ, 1-${max}]`,
+
+  autoStartOn: cap => `  ಹೊಸ ಸೆಷನ್‌ಗಳು: auto-refresh ಆನ್, ಪ್ರತಿ ನಿಷ್ಕ್ರಿಯ ಅವಧಿಯಲ್ಲಿ ಗರಿಷ್ಠ ${cap} (/cache-auto default off ಮೂಲಕ ಆಫ್ ಮಾಡಿ)`,
+  autoStartOff: '  ಹೊಸ ಸೆಷನ್‌ಗಳು: auto-refresh ಆಫ್ (/cache-auto default on ಮೂಲಕ ಪ್ರತಿ ಹೊಸ ಸೆಷನ್‌ನಲ್ಲಿ ಆನ್ ಮಾಡಿ)',
+  paneStartOn: 'ಹೊಸ ಸೆಷನ್‌ಗಳಲ್ಲಿ ಡೀಫಾಲ್ಟ್ ಆಗಿ ಆನ್',
 
   details: 'ವಿವರ ›',
   cmdPanel: 'Prompt cache ಪ್ಯಾನಲ್ ತೆರೆಯಿರಿ',

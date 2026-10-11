@@ -33,7 +33,7 @@ export const en = {
   cmdStatus: 'Show prompt cache status, time left and estimated rebuild cost',
   cmdPing: 'Refresh the prompt cache now',
   cmdAuto: 'View or change auto-refresh settings',
-  cmdAutoHint: '[on|off] [max refreshes]',
+  cmdAutoHint: '[default] [on|off] [max refreshes]',
   cmdLang: 'Set the display language',
   cmdLangHint: '[auto|code]',
 
@@ -104,7 +104,12 @@ export const en = {
     `not confirmed yet. Auto-refresh sends one per idle period until a refresh is seen to restore the full ${ttl}`,
   autoNote:
     '  Note: refreshes are sent only while this app is running and your computer is awake, and each one counts toward your plan usage or API credit',
-  autoUsage: (max: number) => `Usage: /cache-auto [on|off] [max refreshes per idle period, 1-${max}]`,
+  autoUsage: (max: number) => `Usage: /cache-auto [default] [on|off] [max refreshes per idle period, 1-${max}]`,
+
+  autoStartOn: (cap: number) =>
+    `  New sessions: auto-refresh on, up to ${cap} per idle period (/cache-auto default off turns that off)`,
+  autoStartOff: '  New sessions: auto-refresh off (/cache-auto default on starts every session with it on)',
+  paneStartOn: 'On by default in new sessions',
 
   details: 'Details ›',
   cmdPanel: 'Open the prompt cache panel',

@@ -22,7 +22,7 @@ export const ml: Messages = {
   cmdStatus: 'Prompt cache നില, ശേഷിക്കുന്ന സമയം, പുനർനിർമാണത്തിന്റെ ചെലവ് കണക്ക് എന്നിവ കാണുക',
   cmdPing: 'Prompt cache ഇപ്പോൾ refresh ചെയ്യുക',
   cmdAuto: 'Auto-refresh ക്രമീകരണങ്ങൾ കാണുക അല്ലെങ്കിൽ മാറ്റുക',
-  cmdAutoHint: '[on|off] [refresh പരിധി]',
+  cmdAutoHint: '[default] [on|off] [refresh പരിധി]',
   cmdLang: 'ഇന്റർഫേസ് ഭാഷ തിരഞ്ഞെടുക്കുക',
   cmdLangHint: '[auto|code]',
 
@@ -79,7 +79,11 @@ export const ml: Messages = {
   extendsNo: 'സ്ഥിരീകരിച്ചിട്ടില്ല. അവസാന refresh-ന് ശേഷം cache miss ഉണ്ടായി, അതിനാൽ ഓരോ ഇടവേളയിലും ഒരു auto-refresh മാത്രമേ അയയ്ക്കൂ',
   extendsUnknown: ttl => `ഇതുവരെ സ്ഥിരീകരിച്ചിട്ടില്ല. Refresh മുഴുവൻ ${spanMl(ttl)} കാലാവധി തിരികെ നൽകുന്നതായി സ്ഥിരീകരിക്കും വരെ ഓരോ ഇടവേളയിലും ഒരു auto-refresh മാത്രമേ അയയ്ക്കൂ`,
   autoNote: '  കുറിപ്പ്: ആപ്പ് പ്രവർത്തിക്കുകയും കമ്പ്യൂട്ടർ ഉണർന്നിരിക്കുകയും ചെയ്യുമ്പോൾ മാത്രം refresh അയയ്ക്കുന്നു. ഓരോന്നും പ്ലാൻ ഉപയോഗത്തിലോ API ക്രെഡിറ്റിലോ കണക്കാക്കുന്നു',
-  autoUsage: max => `ഉപയോഗം: /cache-auto [on|off] [ഓരോ ഇടവേളയിലെയും refresh പരിധി, 1-${max}]`,
+  autoUsage: max => `ഉപയോഗം: /cache-auto [default] [on|off] [ഓരോ ഇടവേളയിലെയും refresh പരിധി, 1-${max}]`,
+
+  autoStartOn: cap => `  പുതിയ സെഷനുകൾ: auto-refresh ഓൺ, ഓരോ ഇടവേളയിലും പരമാവധി ${cap} (/cache-auto default off ഉപയോഗിച്ച് ഓഫ് ആക്കാം)`,
+  autoStartOff: '  പുതിയ സെഷനുകൾ: auto-refresh ഓഫ് (/cache-auto default on ഉപയോഗിച്ച് എല്ലാ പുതിയ സെഷനിലും ഓൺ ആക്കാം)',
+  paneStartOn: 'പുതിയ സെഷനുകളിൽ സ്വതവേ ഓൺ',
 
   details: 'വിവരം ›',
   cmdPanel: 'Prompt cache പാനൽ തുറക്കുക',

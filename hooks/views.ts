@@ -556,7 +556,7 @@ export function paneView(
       Button({ key: 'cap-up', label: '+', variant: 'secondary', onPress: handlers.onCapUp }),
     ],
   })
-  const switchRows = [
+  const switchRows: RenderNode[] = [
     between([
       words(m.autoTitle, 'title'),
       Button({
@@ -568,6 +568,8 @@ export function paneView(
     ]),
     between([words(plan, 'body'), stepper]),
   ]
+  // A switch that starts on in every session says so: turning it off here lasts for this session.
+  if (view.start.isOn) switchRows.push(words(m.paneStartOn, 'small', PANEL_PIXELS))
 
   // How the cache has held, beside the button that pings now; under it, what the last press did and the price basis.
   const recent = observations.slice(-8)

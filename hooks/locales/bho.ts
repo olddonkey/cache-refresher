@@ -22,7 +22,7 @@ export const bho: Messages = {
   cmdStatus: 'Prompt cache के हाल, बचल समय आ फेर बनावे के अनुमानित खर्च देखीं',
   cmdPing: 'Prompt cache अबहीं refresh करीं',
   cmdAuto: 'Auto-refresh के सेटिंग देखीं भा बदलीं',
-  cmdAutoHint: '[on|off] [refresh सीमा]',
+  cmdAutoHint: '[default] [on|off] [refresh सीमा]',
   cmdLang: 'इंटरफेस के भाषा चुनीं',
   cmdLangHint: '[auto|code]',
 
@@ -79,7 +79,11 @@ export const bho: Messages = {
   extendsNo: 'पुष्टि नइखे भइल। पिछला refresh के बाद cache miss भइल, एहसे हर खाली समय में खाली एक auto-refresh भेजल जाला',
   extendsUnknown: ttl => `अभी ले पुष्टि नइखे भइल। Refresh से पूरा ${spanBho(ttl)} के मियाद मिले के पुष्टि होखे ले हर खाली समय में खाली एक auto-refresh भेजल जाला`,
   autoNote: '  ध्यान दीं: ऐप चलत होखे आ कंप्यूटर जागल होखे तबे refresh भेजल जाला। हर refresh प्लान के इस्तेमाल भा API क्रेडिट में गिनल जाला',
-  autoUsage: max => `इस्तेमाल: /cache-auto [on|off] [हर खाली समय के refresh सीमा, 1-${max}]`,
+  autoUsage: max => `इस्तेमाल: /cache-auto [default] [on|off] [हर खाली समय के refresh सीमा, 1-${max}]`,
+
+  autoStartOn: cap => `  नया सत्र: auto-refresh चालू, हर खाली समय में जादे से जादे ${cap} (/cache-auto default off से बंद करीं)`,
+  autoStartOff: '  नया सत्र: auto-refresh बंद (/cache-auto default on से हर नया सत्र में चालू करीं)',
+  paneStartOn: 'नया सत्र में डिफ़ॉल्ट रूप से चालू',
 
   details: 'ब्यौरा ›',
   cmdPanel: 'Prompt cache पैनल खोलीं',
