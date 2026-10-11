@@ -35,7 +35,7 @@ On the desktop app the ring and the panel are drawn and animated. In the termina
 
 A refresh reads the cached prefix at the cache-read price `r`, plus a few dozen tokens for the request itself. After an expiry the prefix is written again at the cache-write price `w`, which is `w − r` more than a hit would have cost. Refreshes are worth sending while their total stays under that difference, which gives at most about `(w − r) / r` refreshes in a row, and a refresh pays off whenever the chance you come back within its window is above about `r / (w − r)`. For most models that is a few percent. `/cache-status` shows both numbers for your model and cache size.
 
-Which lifetime applies is read from the environment variables Claude Code itself honors (`FORCE_PROMPT_CACHING_5M`, `CLAUDE_CODE_PROMPT_CACHE_TTL`, `ENABLE_PROMPT_CACHING_1H`). With none of them set, the mod assumes one hour on a subscription inside its plan limits and five minutes elsewhere, and corrects that assumption from what it observes.
+Which lifetime applies is read from the environment variables Claude Code itself honors (`FORCE_PROMPT_CACHING_5M`, `CLAUDE_CODE_PROMPT_CACHE_TTL`, `ENABLE_PROMPT_CACHING_1H`). With none of them set, the mod assumes one hour on a subscription inside its plan limits and five minutes elsewhere. When Claude Code itself gives the lifetime (at a model switch, and on a resume that comes between five minutes and an hour after the last response), the mod uses that in place of its own assumption, except past the plan's limits. Either way it corrects the lifetime from what it observes.
 
 Dollar figures are computed at API list prices. On a subscription they are an equivalent, not a charge.
 
@@ -54,8 +54,8 @@ The mod registers these hooks. None of them changes what Claude is sent or what 
 | :- | :- | :- |
 | `session.start` | Starts a one-second timer that redraws the countdown and sends a refresh when one is due, and registers the five commands | Nothing: the event is passed on as it came |
 | `turn.step` | For the main conversation only, reads the finished step's token usage and counts the letters of its reply | Nothing: every chunk and the result are passed on untouched |
-| `classic.SessionStart` | On resume or fork, takes the time since the last response, the context size and the model, so the cache's state shows before the first turn; after compaction, forgets the old cache | Nothing: it adds no context and passes the event on |
-| `classic.PostModelSwitch` | Marks the tracked cache as no longer usable when the model changes | Nothing |
+| `classic.SessionStart` | On resume or fork, takes the time since the last response, the context size, the model and whether Claude Code counts the cache as expired, so the cache's state shows before the first turn; after compaction, forgets the old cache | Nothing: it adds no context and passes the event on |
+| `classic.PostModelSwitch` | Takes the cache lifetime Claude Code reports with the switch, and marks the tracked cache as no longer usable when the model changes | Nothing |
 | `command.run` | Answers its own five commands, matched by name | Only those commands; no other command reaches it |
 | `ui.render` (`AbovePrompt`) | Adds the one-line status bar under what is already above the prompt | Adds its own line; leaves the rest as it was, and stands aside while a survey is shown |
 | `ui.render` (`Pane`, id `cache`) | Draws the mod's own panel | Only its own panel |

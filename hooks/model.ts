@@ -91,6 +91,17 @@ export function extensionEvidence(previous: Snapshot, startedAt: number, verdict
   return verdict === 'hit'
 }
 
+/**
+ * The TTL Claude Code applies, as a resume gives it away: between the two
+ * lifetimes, its own verdict on whether the cache has lapsed tells them apart.
+ */
+export function resumedTtl(gapMs: number, isLikelyExpired: boolean | undefined): Ttl | undefined {
+  const isBetween = gapMs > TTL_MS['5m'] + 30_000 && gapMs < TTL_MS['1h'] - 30_000
+  if (isLikelyExpired === undefined || !isBetween) return undefined
+
+  return isLikelyExpired ? '5m' : '1h'
+}
+
 /** The pings one idle stretch may spend: the person's cap, never past break-even, one until pings are proven. */
 export function budgetOf(held: Snapshot, cap: number, known: Extension): number {
   const costs = costsOf(held)
