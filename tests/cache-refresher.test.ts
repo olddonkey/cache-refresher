@@ -980,3 +980,61 @@ test('an unpriced cache keeps its figure and ring without the costs drawing', { 
   expect(await pane.find({ type: 'Text', text: 'Pricing unavailable for this model' })).toBeDefined()
   await pane.unmount()
 })
+
+test('auto-refresh turns idle compaction off while it is on, and only what it turned off back on', async ($, on) => {
+  mock.clock(on, { now: START })
+  mock.store(on)
+  mock.env(on, {})
+  let idle: boolean = true
+  const written: boolean[] = []
+  on('config.list', () => ({
+    value: [{ key: 'idleCompaction', label: 'Idle compaction', kind: 'toggle', value: idle, provider: { kind: 'engine' } }],
+  }))
+  on('config.set', (_: unknown, e: { key: string; value: boolean }) => {
+    idle = e.value
+    written.push(e.value)
+
+    return { value: e.value }
+  })
+  await boot($, on)
+
+  const enabled = await $.command.run({ command: 'cache-auto', args: 'on' })
+  expect(enabled.text).toContain('Idle compaction is off while auto-refresh is on')
+  expect(idle).toBe(false)
+  // Turning it on again changes nothing more.
+  await $.command.run({ command: 'cache-auto', args: '5' })
+  expect(written).toEqual([false])
+
+  const disabled = await $.command.run({ command: 'cache-auto', args: 'off' })
+  expect(disabled.text).toContain('Idle compaction is back on.')
+  expect(idle).toBe(true)
+
+  // A setting the person turned off is left as it is.
+  idle = false
+  written.length = 0
+  await $.command.run({ command: 'cache-auto', args: 'on' })
+  await $.command.run({ command: 'cache-auto', args: 'off' })
+  expect(written).toEqual([])
+  expect(idle).toBe(false)
+})
+
+test('ending a session with auto-refresh on turns idle compaction back on', async ($, on) => {
+  mock.clock(on, { now: START })
+  mock.store(on)
+  mock.env(on, {})
+  let idle: boolean = true
+  on('config.list', () => ({
+    value: [{ key: 'idleCompaction', label: 'Idle compaction', kind: 'toggle', value: idle, provider: { kind: 'engine' } }],
+  }))
+  on('config.set', (_: unknown, e: { value: boolean }) => {
+    idle = e.value
+
+    return { value: e.value }
+  })
+  on('session.end', (_: unknown, e: { sessionId: string }) => ({ sessionId: e.sessionId }))
+  await boot($, on)
+  await $.command.run({ command: 'cache-auto', args: 'on' })
+  expect(idle).toBe(false)
+  await $.session.end({ reason: 'exit', sessionId: 's' })
+  expect(idle).toBe(true)
+})

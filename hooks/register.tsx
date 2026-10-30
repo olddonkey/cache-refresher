@@ -43,6 +43,9 @@ const MAX_OBSERVATIONS = 100
 const EXTENDS = 'pingExtends'
 const LANG = 'lang'
 const HEARD = 'langHeard'
+// Set while auto-refresh has idle compaction turned off, so turning auto-refresh off turns it back on.
+const PAUSED = 'idleCompactionPaused'
+const IDLE_COMPACTION = 'idleCompaction'
 
 type TtlChoice = Pick<Snapshot, 'ttl' | 'ttlSource'>
 
@@ -202,6 +205,39 @@ async function knownExtension($: EngineInterface): Promise<Extension> {
 async function learnExtension($: EngineInterface, ttl: Ttl, doesExtend: boolean): Promise<void> {
   extension = { ...(await knownExtension($)), [ttl]: doesExtend }
   await $.store.set(EXTENDS, extension)
+}
+
+// Idle compaction runs at 90% of a one-hour cache's lifetime, before an auto-refresh would go out, so it is off while auto-refresh is on.
+// Only a setting this mod turned off is turned back on; one the person turned off stays off.
+async function holdIdleCompaction($: EngineInterface, isAutoOn: boolean): Promise<'paused' | 'restored' | null> {
+  try {
+    const isPaused = (await $.store.get(PAUSED)) === true
+    if (isAutoOn === isPaused) return null
+    const row = (await $.config.list()).find(each => each.key === IDLE_COMPACTION)
+    if (isAutoOn) {
+      if (row?.value !== true) return null
+      if ((await $.config.set({ key: IDLE_COMPACTION, value: false })).deny !== undefined) return null
+      await $.store.set(PAUSED, true)
+
+      return 'paused'
+    }
+    await $.store.set(PAUSED, false)
+    if (row?.value !== false) return null
+    if ((await $.config.set({ key: IDLE_COMPACTION, value: true })).deny !== undefined) return null
+
+    return 'restored'
+  } catch {
+    return null
+  }
+}
+
+async function setAuto($: EngineInterface, change: (held: { isOn: boolean; cap: number }) => { isOn: boolean; cap: number }): Promise<string | null> {
+  const held = await update($, auto, change)
+  const outcome = await holdIdleCompaction($, held.isOn)
+  if (outcome === null) return null
+  const m = MESSAGES[await langOf($)]
+
+  return outcome === 'paused' ? m.idlePaused : m.idleRestored
 }
 
 async function viewOf($: EngineInterface): Promise<View> {
@@ -441,6 +477,13 @@ export const register: Register = on => {
     return next(e)
   })
 
+  on('session.end', async ($, e, next) => {
+    // Auto-refresh ends with the session, so idle compaction comes back on.
+    if ((await read($, auto)).isOn) await holdIdleCompaction($, false)
+
+    return next(e)
+  })
+
   on('turn.step', async function* ($, e, next) {
     // Subagents keep caches of their own; only the main conversation is tracked.
     const isMain = e.agentId === undefined
@@ -526,14 +569,16 @@ export const register: Register = on => {
     const wanted = words.find(word => word === 'on' || word === 'off')
     const cap = words.map(Number).find(n => Number.isInteger(n) && n > 0 && n <= MAX_CAP)
     if (words.length > 0 && wanted === undefined && cap === undefined) return { text: m.autoUsage(MAX_CAP) }
-    if (words.length > 0) {
-      await update($, auto, now => ({
-        isOn: wanted === undefined ? true : wanted === 'on',
-        cap: cap ?? now.cap,
-      }))
-    }
+    const idle =
+      words.length > 0
+        ? await setAuto($, now => ({
+            isOn: wanted === undefined ? true : wanted === 'on',
+            cap: cap ?? now.cap,
+          }))
+        : null
+    const lines = [m.autoHeader, ...autoLines(m, await viewOf($)), m.autoNote]
 
-    return { text: [m.autoHeader, ...autoLines(m, await viewOf($)), m.autoNote].join('\n') }
+    return { text: (idle === null ? lines : [...lines, `  ${idle}`]).join('\n') }
   })
 
   on('command.run', { command: 'cache-lang' }, async ($, e) => {
@@ -561,8 +606,9 @@ export const register: Register = on => {
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     return paneView($.ui.resolve(e), e.surface, MESSAGES[await langOf($)], await viewOf($), lastAction, {
-      onToggle: () => {
-        void update($, auto, held => ({ ...held, isOn: !held.isOn }))
+      onToggle: async () => {
+        const idle = await setAuto($, held => ({ ...held, isOn: !held.isOn }))
+        if (idle !== null) $.ui.toast(idle)
       },
       onCapDown: () => {
         void update($, auto, held => ({ ...held, cap: Math.max(1, held.cap - 1) }))
