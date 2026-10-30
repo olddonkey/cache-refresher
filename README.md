@@ -66,6 +66,7 @@ The mod registers these hooks. None of them changes what Claude is sent or what 
 - Auto-refresh is per session and starts off. Until the mod has seen a refresh actually extend the cache, it sends one refresh per idle period and no more.
 - Only the main conversation is tracked. Subagents keep caches of their own.
 - After compaction the mod starts tracking afresh, and after a model switch it shows the cache as unavailable: what was cached no longer matches.
+- **Idle compaction comes first on long conversations.** With the one-hour cache and at least 200,000 tokens of context (`CLAUDE_CODE_IDLE_COMPACT_MIN_TOKENS`, never below 100,000), Claude Code compacts an idle conversation at 90% of the cache's lifetime, 54 minutes after your last turn. Auto-refresh waits until five minutes before expiry, so the compaction happens first, and the mod then stops: the old cache no longer matches. A refresh does not postpone the compaction. To keep the whole conversation cached instead, set `"idleCompaction": false` in `settings.json`, or raise `CLAUDE_CODE_IDLE_COMPACT_MIN_TOKENS` above your context size.
 
 ## Install
 
@@ -89,6 +90,7 @@ claude --plugin-dir .
 - **The countdown uses the wrong lifetime.** `/cache-status` shows the lifetime in force and where it came from (environment, observed or assumed). An assumed lifetime corrects itself the first time a gap longer than five minutes ends in a hit or a miss.
 - **A refresh was refused, or reported a miss.** A refused refresh sends nothing and costs nothing. A miss means the cache had already expired or no longer matched; that request was billed like any other, and your next message rebuilds the cache. `/cache-ping force` sends the request anyway, which rebuilds the cache now.
 - **Auto-refresh sent one refresh and stopped.** That is the trial: the rest, up to your limit, unlocks once a refresh has been seen to extend the cache.
+- **Auto-refresh never sent anything, and the conversation was compacted while you were away.** That is Claude Code's idle compaction, which runs at 54 minutes on a one-hour cache once the context is 200,000 tokens or more. See "Requirements and limits" for how to turn it off.
 - **The panel is in the wrong language.** `/cache-lang` followed by a language code sets one (`/cache-lang xx` lists the codes); `/cache-lang auto` goes back to matching the conversation. Closely related languages can be mistaken for one another on a short reply.
 - **No ring in the terminal.** The terminal draws the same information as text; the ring and the animations are the desktop app's.
 
@@ -119,6 +121,8 @@ Each language is one file under `hooks/locales/` plus an entry in the registry i
 - **自动续期**默认关闭，按会话生效。开启后会在缓存快过期时发送一次续期请求，次数不超过你设的上限；已知模型价格时，总成本也不会超过一次过期多花的钱。在确认续期有效之前，每次空闲期间只续期 1 次。
 - 支持 43 种语言（与 Claude 桌面应用一致），默认跟随对话语言；也可以用 `/cache-lang` 加语言代码手动设置。除中英文外的译文为机器翻译，未经母语者校对，欢迎指正。
 - 续期请求通过 Claude Code 发送到当前模型，内容是现有对话的前缀；除此之外插件不发起任何网络请求，也没有遥测。只在每条回复经过时统计中英文字符来判断语言，不保存回复内容，也不读取设置文件、对话记录或任何凭据。
+
+- **与闲时压缩（idle compaction）的关系**：使用 1 小时缓存且上下文达到 20 万 token（由 `CLAUDE_CODE_IDLE_COMPACT_MIN_TOKENS` 设置，最低 10 万）时，Claude Code 会在缓存寿命的 90%，即最后一轮结束后第 54 分钟，把空闲的对话压缩成摘要。自动续期要等到过期前 5 分钟（第 55 分钟）才发送，所以压缩会先发生，之后旧缓存不再匹配，插件也随之停止续期；续期也不会推迟压缩。想保留完整对话并续期，请在 `settings.json` 中设置 `"idleCompaction": false`，或把 `CLAUDE_CODE_IDLE_COMPACT_MIN_TOKENS` 调到高于你的上下文大小。
 
 需要 Claude Code v2.1.287 及以上。
 
