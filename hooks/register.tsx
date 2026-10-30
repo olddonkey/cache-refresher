@@ -47,7 +47,6 @@ const HEARD = 'langHeard'
 const PAUSED = 'idleCompactionPaused'
 // The sessions with auto-refresh on, by when each last said so: the setting is shared, auto-refresh is per session.
 const HOLDERS = 'idleCompactionHolders'
-const IDLE_COMPACTION = 'idleCompaction'
 // A session renews its hold this often; one not heard from for longer than the stale age has ended without saying so.
 const HOLD_BEAT_MS = 60_000
 const HOLD_STALE_MS = 5 * 60_000
@@ -242,19 +241,20 @@ async function changeHold($: EngineInterface, isAutoOn: boolean, sessionId?: str
     const isWanted = Object.keys(holders).length > 0
     const isPaused = (await $.store.get(PAUSED)) === true
     if (isWanted === isPaused) return null
-    const row = (await $.config.list()).find(each => each.key === IDLE_COMPACTION)
+    // The setting's key is written out in each call: the plugin directory accepts a settings write only with its key as fixed text.
+    const row = (await $.config.list()).find(each => each.key === 'idleCompaction')
     if (isWanted) {
       if (row?.value !== true) return null
       // Recorded before the write: a record with the setting still on is cleared harmlessly, a write with no record would never be undone.
       await $.store.set(PAUSED, true)
-      if ((await $.config.set({ key: IDLE_COMPACTION, value: false })).deny === undefined) return 'paused'
+      if ((await $.config.set({ key: 'idleCompaction', value: false })).deny === undefined) return 'paused'
       await $.store.set(PAUSED, false)
 
       return null
     }
     // A row another settings file now holds cannot be written: the record stays, to try again later.
     if (row === undefined) return null
-    if (row.value === false && (await $.config.set({ key: IDLE_COMPACTION, value: true })).deny !== undefined) return null
+    if (row.value === false && (await $.config.set({ key: 'idleCompaction', value: true })).deny !== undefined) return null
     await $.store.set(PAUSED, false)
 
     return row.value === false ? 'restored' : null

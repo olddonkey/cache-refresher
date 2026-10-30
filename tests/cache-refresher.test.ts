@@ -987,7 +987,8 @@ function idleConfig(on: any, initial = true) {
   on('config.list', () => ({
     value: [{ key: 'idleCompaction', label: 'Idle compaction', kind: 'boolean', value: config.idle, provider: { plugin: 'engine', tier: 'core' }, isLocked: false }],
   }))
-  on('config.set', (_: unknown, e: { value: boolean }) => {
+  on('config.set', (_: unknown, e: { key: string; value: boolean }) => {
+    if (e.key !== 'idleCompaction') return { deny: `unexpected key ${e.key}` }
     config.idle = e.value
     config.written.push(e.value)
 
